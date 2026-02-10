@@ -27,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 if ($e->getErrorCode() !== null) {
                     $payload['error_code'] = $e->getErrorCode();
                 }
+                $context = $e->getContext();
+                if ($context !== null && $context !== []) {
+                    $payload = array_merge($payload, $context);
+                }
                 return response()->json($payload, $e->getHttpStatusCode());
             }
 

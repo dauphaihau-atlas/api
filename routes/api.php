@@ -1,14 +1,17 @@
 <?php
 
+use App\Exceptions\ServiceUnavailableException;
 use App\Presentation\Http\Controllers\Api\V1\AuthController;
 use App\Presentation\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Route;
 
-// Health check: verifies connectivity to the database (e.g. PostgreSQL container)
+// Health check: verifies connectivity to the database (e.g. PostgreSQL container) and Redis
 Route::get('health', function (): \Illuminate\Http\JsonResponse {
     $checks = [
         'database' => null,
+        'redis' => null,
     ];
 
     try {
@@ -17,12 +20,23 @@ Route::get('health', function (): \Illuminate\Http\JsonResponse {
         $checks['database'] = 'ok';
     } catch (\Throwable $e) {
         $checks['database'] = 'error';
-        return response()->json([
-            'status' => 'unhealthy',
-            'message' => 'Database connection failed',
-            'checks' => $checks,
-            'error' => config('app.debug') ? $e->getMessage() : null,
-        ], 503);
+        $context = ['status' => 'unhealthy', 'checks' => $checks];
+        if (config('app.debug')) {
+            $context['error'] = $e->getMessage();
+        }
+        throw new ServiceUnavailableException('Database connection failed', 'DB_CONNECTION_FAILED', $context, 0, $e);
+    }
+
+    try {
+        Redis::ping();
+        $checks['redis'] = 'ok';
+    } catch (\Throwable $e) {
+        $checks['redis'] = 'error';
+        $context = ['status' => 'unhealthy', 'checks' => $checks];
+        if (config('app.debug')) {
+            $context['error'] = $e->getMessage();
+        }
+        throw new ServiceUnavailableException('Redis connection failed', 'REDIS_CONNECTION_FAILED', $context, 0, $e);
     }
 
     return response()->json([

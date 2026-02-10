@@ -9,7 +9,8 @@ abstract class ApiException extends \Exception
         protected int $httpStatusCode = 500,
         protected ?string $errorCode = null,
         int $code = 0,
-        ?\Throwable $previous = null
+        ?\Throwable $previous = null,
+        protected ?array $context = null
     ) {
         parent::__construct($message, $code, $previous);
     }
@@ -22,5 +23,10 @@ abstract class ApiException extends \Exception
     public function getErrorCode(): ?string
     {
         return $this->errorCode;
+    }
+
+    public function getContext(): ?array
+    {
+        return $this->context;
     }
 }
