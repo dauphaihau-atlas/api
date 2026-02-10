@@ -6,6 +6,7 @@ use App\Presentation\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpFoundation\Response;
 
 // Health check: verifies connectivity to the database (e.g. PostgreSQL container) and Redis
 Route::get('health', function (): \Illuminate\Http\JsonResponse {
@@ -42,7 +43,7 @@ Route::get('health', function (): \Illuminate\Http\JsonResponse {
     return response()->json([
         'status' => 'healthy',
         'checks' => $checks,
-    ], 200);
+    ], Response::HTTP_OK);
 });
 
 Route::prefix('v1')->middleware('throttle.api')->group(function (): void {

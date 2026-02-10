@@ -3,6 +3,10 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Presentation\Http\Middleware\LogApiRequests;
+use App\Presentation\Http\Middleware\RateLimitMiddleware;
+use App\Exceptions\ApiException;
+use App\Core\Domain\Exceptions\InvalidEmailException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,8 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->appendToGroup('api', LogApiRequests::class);
+
         $middleware->alias([
-            'throttle.api' => \App\Presentation\Http\Middleware\RateLimitMiddleware::class,
+            'log.api' => LogApiRequests::class,
+            'throttle.api' => RateLimitMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -22,7 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            if ($e instanceof \App\Exceptions\ApiException) {
+            if ($e instanceof ApiException) {
                 $payload = ['message' => $e->getMessage()];
                 if ($e->getErrorCode() !== null) {
                     $payload['error_code'] = $e->getErrorCode();
@@ -35,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             // Domain exception: InvalidEmailException maps to 422
-            if ($e instanceof \App\Core\Domain\Exceptions\InvalidEmailException) {
+            if ($e instanceof InvalidEmailException) {
                 return response()->json(['message' => $e->getMessage()], 422);
             }
 
