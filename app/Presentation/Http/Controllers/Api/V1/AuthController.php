@@ -9,6 +9,9 @@ use App\Core\Application\UseCases\Auth\LoginUser\LoginUserUseCase;
 use App\Core\Application\UseCases\Auth\LogoutUser\LogoutUserUseCase;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserRequest;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserUseCase;
+use App\Exceptions\NotFoundException;
+use App\Exceptions\UnauthorizedException;
+use App\Exceptions\ValidationException;
 use App\Presentation\Http\Controllers\Controller;
 use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
 use App\Presentation\Http\Requests\LoginRequest;
@@ -34,7 +37,7 @@ class AuthController extends Controller
     {
         $validated = $request->validated();
         if ($validated === null || $validated === []) {
-            return response()->json(['message' => 'Validation failed'], 422);
+            throw new ValidationException('Validation failed');
         }
 
         $useCaseRequest = new LoginUserRequest(
@@ -44,7 +47,7 @@ class AuthController extends Controller
         $response = $this->loginUserUseCase->execute($useCaseRequest);
 
         if ($response === null) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+            throw new UnauthorizedException('Invalid credentials');
         }
 
         return response()->json([
@@ -65,7 +68,7 @@ class AuthController extends Controller
     {
         $validated = $request->validated();
         if ($validated === null || $validated === []) {
-            return response()->json(['message' => 'Validation failed'], 422);
+            throw new ValidationException('Validation failed');
         }
 
         $useCaseRequest = new CreateUserRequest(
@@ -100,12 +103,12 @@ class AuthController extends Controller
     {
         $userId = $request->user()?->getAuthIdentifier();
         if ($userId === null) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
+            throw new UnauthorizedException('Unauthenticated');
         }
 
         $user = $this->userRepository->findById((int) $userId);
         if ($user === null) {
-            return response()->json(['message' => 'User not found'], 404);
+            throw new NotFoundException('User not found');
         }
 
         return response()->json(new UserResource($user), 200);
