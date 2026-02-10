@@ -6,6 +6,8 @@ use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Application\Services\EmailServiceInterface;
 use App\Core\Domain\Entities\User;
 use App\Core\Domain\ValueObjects\Email;
+use App\Exceptions\ConflictException;
+use App\Exceptions\InternalServerException;
 use Illuminate\Support\Facades\Hash;
 
 class CreateUserUseCase
@@ -20,7 +22,7 @@ class CreateUserUseCase
     {
         $existingUser = $this->userRepository->findByEmail($request->email);
         if ($existingUser !== null) {
-            throw new \RuntimeException('User with this email already exists');
+            throw new ConflictException('User with this email already exists');
         }
 
         $email = new Email($request->email);
@@ -41,7 +43,7 @@ class CreateUserUseCase
 
         $id = $savedUser->getId();
         if ($id === null) {
-            throw new \RuntimeException('User was saved but ID was not returned');
+            throw new InternalServerException('User was saved but ID was not returned');
         }
 
         return new CreateUserResponse(

@@ -9,7 +9,6 @@ use App\Core\Application\UseCases\Auth\LoginUser\LoginUserUseCase;
 use App\Core\Application\UseCases\Auth\LogoutUser\LogoutUserUseCase;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserRequest;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserUseCase;
-use App\Core\Domain\Exceptions\InvalidEmailException;
 use App\Presentation\Http\Controllers\Controller;
 use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
 use App\Presentation\Http\Requests\LoginRequest;
@@ -69,18 +68,12 @@ class AuthController extends Controller
             return response()->json(['message' => 'Validation failed'], 422);
         }
 
-        try {
-            $useCaseRequest = new CreateUserRequest(
-                name: $validated['name'],
-                email: $validated['email'],
-                password: $validated['password']
-            );
-            $createResponse = $this->createUserUseCase->execute($useCaseRequest);
-        } catch (InvalidEmailException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
+        $useCaseRequest = new CreateUserRequest(
+            name: $validated['name'],
+            email: $validated['email'],
+            password: $validated['password']
+        );
+        $createResponse = $this->createUserUseCase->execute($useCaseRequest);
 
         $token = $this->authService->createToken($createResponse->id, 'api');
 

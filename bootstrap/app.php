@@ -17,5 +17,24 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request === null || !$request->expectsJson()) {
+                return null;
+            }
+
+            if ($e instanceof \App\Exceptions\ApiException) {
+                $payload = ['message' => $e->getMessage()];
+                if ($e->getErrorCode() !== null) {
+                    $payload['error_code'] = $e->getErrorCode();
+                }
+                return response()->json($payload, $e->getHttpStatusCode());
+            }
+
+            // Domain exception: InvalidEmailException maps to 422
+            if ($e instanceof \App\Core\Domain\Exceptions\InvalidEmailException) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            return null;
+        });
     })->create();
