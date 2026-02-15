@@ -53,6 +53,10 @@ Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
-        Route::apiResource('users', UserController::class)->only(['index', 'store']);
+
+        // Admin-only routes
+        Route::middleware('can:admin')->group(function (): void {
+            Route::apiResource('users', UserController::class)->only(['index', 'store']);
+        });
     });
 });
