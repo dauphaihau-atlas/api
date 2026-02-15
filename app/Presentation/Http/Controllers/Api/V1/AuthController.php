@@ -18,6 +18,7 @@ use App\Presentation\Http\Requests\LoginRequest;
 use App\Presentation\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -50,12 +51,22 @@ class AuthController extends Controller
             throw new UnauthorizedException('Invalid credentials');
         }
 
+        $user = $this->userRepository->findById($response->id);
+        $avatarUrl = null;
+        if ($user !== null) {
+            $avatarPath = $user->getAvatarPath();
+            if ($avatarPath !== null && $avatarPath !== '') {
+                $avatarUrl = Storage::disk(config('filesystems.avatars_disk', 'public'))->url($avatarPath);
+            }
+        }
+
         return response()->json([
             'token' => $response->token,
             'user' => [
                 'id' => $response->id,
                 'name' => $response->name,
                 'email' => $response->email,
+                'avatar_url' => $avatarUrl,
                 'created_at' => $response->createdAt->format('Y-m-d H:i:s'),
             ],
         ], 200);
