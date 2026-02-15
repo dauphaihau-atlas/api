@@ -75,6 +75,7 @@ Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
 
         // Admin-only routes
         Route::middleware('can:admin')->group(function (): void {
+            Route::post('users/import', [UserController::class, 'import']);
             Route::apiResource('users', UserController::class)->only(['index', 'store']);
             Route::post('users/{user}/avatar', [AvatarController::class, 'updateUser']);
         });
