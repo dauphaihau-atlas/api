@@ -60,6 +60,23 @@ return [
             'report' => false,
         ],
 
+        /*
+        | MinIO disk (S3-compatible). Uses MINIO_* env when set, otherwise
+        | falls back to AWS_* so the same vars can drive both s3 and minio.
+        */
+        'minio' => [
+            'driver' => 's3',
+            'key' => env('MINIO_ACCESS_KEY', env('AWS_ACCESS_KEY_ID')),
+            'secret' => env('MINIO_SECRET_KEY', env('AWS_SECRET_ACCESS_KEY')),
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+            'bucket' => env('MINIO_BUCKET', env('AWS_BUCKET')),
+            'url' => env('MINIO_URL', env('AWS_URL')),
+            'endpoint' => env('MINIO_ENDPOINT', env('AWS_ENDPOINT')),
+            'use_path_style_endpoint' => true,
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*
