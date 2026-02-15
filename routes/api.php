@@ -2,6 +2,7 @@
 
 use App\Exceptions\ServiceUnavailableException;
 use App\Presentation\Http\Controllers\Api\V1\AuthController;
+use App\Presentation\Http\Controllers\Api\V1\AvatarController;
 use App\Presentation\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -70,10 +71,12 @@ Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
+        Route::post('me/avatar', [AvatarController::class, 'updateMe']);
 
         // Admin-only routes
         Route::middleware('can:admin')->group(function (): void {
             Route::apiResource('users', UserController::class)->only(['index', 'store']);
+            Route::post('users/{user}/avatar', [AvatarController::class, 'updateUser']);
         });
     });
 });
