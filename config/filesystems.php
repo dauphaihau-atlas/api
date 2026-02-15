@@ -29,6 +29,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Imports Disk
+    |--------------------------------------------------------------------------
+    |
+    | Disk used for uploaded import files (e.g. CSV). "local" stores under
+    | storage/app/private; "minio" for S3-compatible audit storage.
+    |
+    */
+
+    'imports_disk' => env('IMPORTS_DISK', 'local'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
