@@ -6,13 +6,15 @@ use App\Presentation\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
-// Health check: verifies connectivity to the database (e.g. PostgreSQL container) and Redis
+// Health check: verifies connectivity to the database (e.g. PostgreSQL container), Redis, and MinIO (when configured)
 Route::get('health', function (): \Illuminate\Http\JsonResponse {
     $checks = [
         'database' => null,
         'redis' => null,
+        'minio' => null,
     ];
 
     try {
@@ -38,6 +40,21 @@ Route::get('health', function (): \Illuminate\Http\JsonResponse {
             $context['error'] = $e->getMessage();
         }
         throw new ServiceUnavailableException('Redis connection failed', 'REDIS_CONNECTION_FAILED', $context, 0, $e);
+    }
+
+    // MinIO / S3-compatible storage: only check when a minio endpoint is configured
+    if (! empty(config('filesystems.disks.minio.endpoint'))) {
+        try {
+            Storage::disk('minio')->files('/');
+            $checks['minio'] = 'ok';
+        } catch (\Throwable $e) {
+            $checks['minio'] = 'error';
+            $context = ['status' => 'unhealthy', 'checks' => $checks];
+            if (config('app.debug')) {
+                $context['error'] = $e->getMessage();
+            }
+            throw new ServiceUnavailableException('MinIO connection failed', 'MINIO_CONNECTION_FAILED', $context, 0, $e);
+        }
     }
 
     return response()->json([
