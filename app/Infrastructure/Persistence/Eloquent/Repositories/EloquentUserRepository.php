@@ -36,6 +36,7 @@ class EloquentUserRepository implements UserRepositoryInterface
         if ($user->getPassword() !== null) {
             $model->password = $user->getPassword();
         }
+        $model->avatar_path = $user->getAvatarPath();
         $model->save();
 
         return $this->toEntity($model);
@@ -64,6 +65,7 @@ class EloquentUserRepository implements UserRepositoryInterface
             name: $model->name,
             email: new Email($model->email),
             password: $model->password,
+            avatarPath: $model->avatar_path,
             createdAt: $model->created_at?->toDateTimeImmutable(),
             updatedAt: $model->updated_at?->toDateTimeImmutable()
         );
