@@ -11,6 +11,7 @@ class User
         private string $name,
         private Email $email,
         private ?string $password = null,
+        private ?string $avatarPath = null,
         private ?\DateTimeImmutable $createdAt = null,
         private ?\DateTimeImmutable $updatedAt = null
     ) {
@@ -46,6 +47,17 @@ class User
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function getAvatarPath(): ?string
+    {
+        return $this->avatarPath;
+    }
+
+    public function updateAvatarPath(?string $path): void
+    {
+        $this->avatarPath = $path;
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function updateName(string $name): void
