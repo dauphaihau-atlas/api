@@ -5,23 +5,32 @@ namespace App\Presentation\Http\Controllers\Api\V1;
 use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserRequest;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserUseCase;
+use App\Core\Application\UseCases\User\ExportUsers\ExportUsersRequest as ExportUsersUseCaseRequest;
+use App\Core\Application\UseCases\User\ExportUsers\ExportUsersUseCase;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersRequest as ImportUsersUseCaseRequest;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersUseCase;
+use App\Exceptions\NotFoundException;
 use App\Exceptions\ServiceUnavailableException;
+use App\Exceptions\ValidationException;
 use App\Presentation\Http\Controllers\Controller;
 use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
 use App\Presentation\Http\Requests\ImportUsersRequest as HttpImportUsersRequest;
 use App\Presentation\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\URL;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UserController extends Controller
 {
     public function __construct(
         private readonly CreateUserUseCase $createUserUseCase,
         private readonly ImportUsersUseCase $importUsersUseCase,
+        private readonly ExportUsersUseCase $exportUsersUseCase,
         private readonly UserRepositoryInterface $userRepository
     ) {
     }
@@ -97,5 +106,79 @@ class UserController extends Controller
             'updated' => $response->updated,
             'errors' => $response->errors,
         ], 200);
+    }
+
+    /**
+     * Export users as CSV (admin only). Writes file to storage and returns download URL.
+     */
+    public function export(): JsonResponse
+    {
+        try {
+            $response = $this->exportUsersUseCase->execute(new ExportUsersUseCaseRequest());
+        } catch (RuntimeException $e) {
+            Log::error('User export failed', ['error' => $e->getMessage()]);
+            throw new ServiceUnavailableException(
+                'Failed to generate export',
+                'EXPORT_GENERATION_FAILED',
+                config('app.debug') ? ['error' => $e->getMessage()] : null,
+                0,
+                $e
+            );
+        }
+
+        $url = $response->url;
+        $expiresAt = $response->expiresAt;
+
+        if ($url === null) {
+            $expiresAt = now()->addMinutes(15);
+            $url = URL::temporarySignedRoute(
+                'export.download',
+                $expiresAt,
+                ['path' => $response->path]
+            );
+        }
+
+        $payload = [
+            'path' => $response->path,
+            'url' => $url,
+        ];
+        if ($expiresAt !== null) {
+            $payload['expires_at'] = $expiresAt instanceof \DateTimeInterface
+                ? $expiresAt->format('c')
+                : $expiresAt->format('c');
+        }
+
+        return response()->json($payload, 200);
+    }
+
+    /**
+     * Download an export file by path (signed URL; admin only).
+     *
+     * @return JsonResponse|StreamedResponse
+     */
+    public function downloadExport(Request $request): JsonResponse|StreamedResponse
+    {
+        $path = $request->query('path');
+        if (! is_string($path) || $path === '') {
+            throw new ValidationException('Invalid or missing path.');
+        }
+
+        $path = str_replace('\\', '/', $path);
+        if (str_starts_with($path, 'exports/') === false || str_contains($path, '..') !== false) {
+            throw new ValidationException('Invalid path.');
+        }
+
+        $disk = Storage::disk(config('filesystems.exports_disk', 'local'));
+        if ($disk->exists($path) === false) {
+            throw new NotFoundException('Export file not found.');
+        }
+
+        $filename = basename($path);
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $adapter */
+        $adapter = $disk;
+        return $adapter->download($path, $filename, [
+            'Content-Type' => 'text/csv',
+        ]);
     }
 }

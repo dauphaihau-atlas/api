@@ -76,6 +76,16 @@ Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
         // Admin-only routes
         Route::middleware('can:admin')->group(function (): void {
             Route::post('users/import', [UserController::class, 'import']);
+            Route::get('users/export', [UserController::class, 'export']);
+            Route::get('users/export/download', [UserController::class, 'downloadExport'])
+                ->middleware('signed')
+
+                // ->name('export.download') gives that route a named route in Laravel.
+                // What it does: Registers the name export.download for this route. You can refer to it by name instead of by URL.
+                // Why it’s used here: The export flow needs to build the download URL (e.g. for the signed link). The controller does that with:
+                //  URL::temporarySignedRoute('export.download', $expiresAt, ['path' => $response->path])
+                ->name('export.download');
+
             Route::apiResource('users', UserController::class)->only(['index', 'store']);
             Route::post('users/{user}/avatar', [AvatarController::class, 'updateUser']);
         });
