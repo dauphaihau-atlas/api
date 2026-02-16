@@ -12,6 +12,7 @@ class User
         private Email $email,
         private ?string $password = null,
         private ?string $avatarPath = null,
+        private ?string $role = null,
         private ?\DateTimeImmutable $createdAt = null,
         private ?\DateTimeImmutable $updatedAt = null
     ) {
@@ -52,6 +53,11 @@ class User
     public function getAvatarPath(): ?string
     {
         return $this->avatarPath;
+    }
+
+    public function getRole(): ?string
+    {
+        return $this->role;
     }
 
     public function updateAvatarPath(?string $path): void
