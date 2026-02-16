@@ -76,6 +76,7 @@ Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
         // Admin-only routes
         Route::middleware('can:admin')->group(function (): void {
             Route::post('users/import', [UserController::class, 'import']);
+            Route::get('users/import/{id}/status', [UserController::class, 'importStatus']);
             Route::get('users/export', [UserController::class, 'export']);
             Route::get('users/export/download', [UserController::class, 'downloadExport'])
                 ->middleware('signed')

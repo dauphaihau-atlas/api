@@ -7,6 +7,8 @@ use App\Core\Application\UseCases\User\CreateUser\CreateUserRequest;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserUseCase;
 use App\Core\Application\UseCases\User\ExportUsers\ExportUsersRequest as ExportUsersUseCaseRequest;
 use App\Core\Application\UseCases\User\ExportUsers\ExportUsersUseCase;
+use App\Core\Application\UseCases\User\GetImportStatus\GetImportStatusRequest as GetImportStatusUseCaseRequest;
+use App\Core\Application\UseCases\User\GetImportStatus\GetImportStatusUseCase;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersRequest as ImportUsersUseCaseRequest;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersUseCase;
 use App\Exceptions\NotFoundException;
@@ -20,8 +22,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -30,6 +32,7 @@ class UserController extends Controller
     public function __construct(
         private readonly CreateUserUseCase $createUserUseCase,
         private readonly ImportUsersUseCase $importUsersUseCase,
+        private readonly GetImportStatusUseCase $getImportStatusUseCase,
         private readonly ExportUsersUseCase $exportUsersUseCase,
         private readonly UserRepositoryInterface $userRepository
     ) {
@@ -68,17 +71,20 @@ class UserController extends Controller
 
     /**
      * Bulk import users from CSV (admin only).
+     * Returns 202 Accepted with import ID for async processing.
      */
     public function import(HttpImportUsersRequest $request): JsonResponse
     {
+        set_time_limit(300); // Large CSV files need time for streaming + job dispatch
+
         $file = $request->file('file');
         if ($file === null || ! $file->isValid()) {
-            return response()->json(['message' => 'Valid CSV file is required'], 422);
+            throw new ValidationException('Valid CSV file is required');
         }
 
         $diskName = config('filesystems.imports_disk', 'local');
         $storage = Storage::disk($diskName);
-        $filename = date('Y-m-d_His') . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.csv';
+        $filename = date('Y-m-d_His').'_'.Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)).'.csv';
 
         try {
             $path = $storage->putFileAs('imports', $file, $filename);
@@ -101,10 +107,43 @@ class UserController extends Controller
 
         $response = $this->importUsersUseCase->execute(new ImportUsersUseCaseRequest($path));
 
+        if ($response->status === 'failed') {
+            throw new ValidationException($response->message ?? 'Import failed.');
+        }
+
         return response()->json([
-            'created' => $response->created,
-            'updated' => $response->updated,
+            'id' => $response->importId,
+            'status' => $response->status,
+            'message' => 'Import started successfully.',
+        ], 202);
+    }
+
+    /**
+     * Get import progress/status (admin only).
+     */
+    public function importStatus(int $id): JsonResponse
+    {
+        $response = $this->getImportStatusUseCase->execute(
+            new GetImportStatusUseCaseRequest($id)
+        );
+
+        if ($response === null) {
+            throw new NotFoundException('Import not found.');
+        }
+
+        return response()->json([
+            'id' => $response->id,
+            'status' => $response->status,
+            'total_rows' => $response->totalRows,
+            'processed_rows' => $response->processedRows,
+            'created' => $response->createdCount,
+            'updated' => $response->updatedCount,
             'errors' => $response->errors,
+            'progress_percentage' => $response->totalRows > 0
+                ? round(($response->processedRows / $response->totalRows) * 100, 2)
+                : 0,
+            'started_at' => $response->startedAt,
+            'completed_at' => $response->completedAt,
         ], 200);
     }
 
@@ -177,6 +216,7 @@ class UserController extends Controller
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $adapter */
         $adapter = $disk;
+
         return $adapter->download($path, $filename, [
             'Content-Type' => 'text/csv',
         ]);

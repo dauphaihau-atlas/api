@@ -14,7 +14,7 @@ class ImportUsersRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'mimes:csv,txt', 'mimetypes:text/csv,text/plain', 'max:2048'],
+            'file' => ['required', 'file', 'mimes:csv,txt', 'mimetypes:text/csv,text/plain', 'max:65536'],
         ];
     }
 }
