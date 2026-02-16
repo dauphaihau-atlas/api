@@ -18,4 +18,12 @@ interface UserRepositoryInterface
      * @return User[]
      */
     public function findAll(): array;
+
+    /**
+     * Bulk upsert users (insert new, update existing by email).
+     *
+     * @param  array<int, array{name: string, email: string, password: string, role: string, created_at: string, updated_at: string}>  $usersData
+     * @return array{created: int, updated: int}
+     */
+    public function upsertBatch(array $usersData): array;
 }

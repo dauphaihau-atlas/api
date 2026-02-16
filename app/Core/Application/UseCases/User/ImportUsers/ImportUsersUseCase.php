@@ -2,113 +2,137 @@
 
 namespace App\Core\Application\UseCases\User\ImportUsers;
 
-use App\Core\Application\Contracts\UserRepositoryInterface;
-use App\Core\Domain\Entities\User;
-use App\Core\Domain\ValueObjects\Email;
-use Illuminate\Support\Facades\Hash;
+use App\Core\Application\Contracts\UserImportRepositoryInterface;
+use App\Core\Domain\Entities\UserImport;
+use App\Jobs\ProcessImportChunk;
+use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ImportUsersUseCase
 {
     private const REQUIRED_HEADERS = ['name', 'email', 'password'];
 
-    private const MIN_PASSWORD_LENGTH = 8;
+    private const CHUNK_SIZE = 500;
 
     public function __construct(
-        private readonly UserRepositoryInterface $userRepository
+        private readonly UserImportRepositoryInterface $importRepository
     ) {
     }
 
     public function execute(ImportUsersRequest $request): ImportUsersResponse
     {
         $disk = Storage::disk(config('filesystems.imports_disk', 'local'));
-        $content = $disk->get($request->path);
 
-        if ($content === null || $content === '') {
-            return new ImportUsersResponse(0, 0, []);
+        // --- Pass 1: validate headers and count rows (O(1) memory) ---
+        // Use $disk->readStream() which works for both local and S3/MinIO disks.
+        $stream = $disk->readStream($request->path);
+        if ($stream === null) {
+            return new ImportUsersResponse(null, 'failed', 'Failed to open import file.');
         }
-
-        // Use an in-memory stream so we can parse the CSV with fgetcsv(). fgetcsv() requires
-        // a stream resource; we write the file content into php://memory, rewind, then read
-        // line-by-line without writing a temp file to disk. Mode "r+" (read and write) is
-        // needed because the code writes the file content into the stream, then rewinds and reads it.
-        $stream = fopen('php://memory', 'r+');
-        if ($stream === false) {
-            return new ImportUsersResponse(0, 0, [['row' => 0, 'message' => 'Failed to read import file.']]);
-        }
-        // Write CSV content into the stream, then rewind so fgetcsv() reads from the start.
-        fwrite($stream, $content);
-        rewind($stream); // Reset stream position to byte 0 so the next read starts at the beginning.
 
         $headerRow = fgetcsv($stream);
         if ($headerRow === false) {
             fclose($stream);
 
-            return new ImportUsersResponse(0, 0, []);
+            return new ImportUsersResponse(null, 'failed', 'Empty CSV file.');
         }
 
         $headerMap = $this->normalizeAndValidateHeaders($headerRow);
         if ($headerMap === null) {
             fclose($stream);
 
-            return new ImportUsersResponse(0, 0, [['row' => 1, 'message' => 'Invalid or missing CSV headers. Required: name, email, password.']]);
+            return new ImportUsersResponse(null, 'failed', 'Invalid or missing CSV headers. Required: name, email, password.');
         }
 
-        $created = 0;
-        $updated = 0;
-        $errors = [];
-        $rowIndex = 1;
+        $totalRows = 0;
+        while (($row = fgetcsv($stream)) !== false) {
+            if (! $this->isEmptyRow($row)) {
+                $totalRows++;
+            }
+        }
+        fclose($stream);
+
+        if ($totalRows === 0) {
+            return new ImportUsersResponse(null, 'failed', 'CSV file contains no data rows.');
+        }
+
+        // Create import tracking record
+        $import = new UserImport(
+            id: null,
+            batchId: Str::uuid()->toString(),
+            filePath: $request->path,
+            status: 'pending',
+            totalRows: $totalRows
+        );
+        $import = $this->importRepository->save($import);
+        $importId = $import->getId();
+
+        // Dispatch an empty batch with callbacks
+        $batch = Bus::batch([])
+            ->name("User Import #{$importId}")
+            ->then(function (Batch $batch) use ($importId): void {
+                app(UserImportRepositoryInterface::class)->updateStatus($importId, 'completed');
+            })
+            ->catch(function (Batch $batch, \Throwable $e) use ($importId): void {
+                Log::error('Import batch failed', [
+                    'import_id' => $importId,
+                    'error' => $e->getMessage(),
+                ]);
+                app(UserImportRepositoryInterface::class)->updateStatus($importId, 'failed');
+            })
+            ->dispatch();
+
+        // --- Pass 2: stream file again, build and add jobs to batch in chunks (O(CHUNK_SIZE) memory) ---
+        $stream = $disk->readStream($request->path);
+        fgetcsv($stream); // skip header
+
+        $currentChunk = [];
+        $rowIndex = 2;
+        $chunkStartRow = 2;
 
         while (($row = fgetcsv($stream)) !== false) {
-            $rowIndex++;
-
             if ($this->isEmptyRow($row)) {
+                $rowIndex++;
+
                 continue;
             }
 
-            $name = trim((string) ($row[$headerMap['name']] ?? ''));
-            $email = trim((string) ($row[$headerMap['email']] ?? ''));
-            $password = trim((string) ($row[$headerMap['password']] ?? ''));
+            $currentChunk[] = [
+                'name' => (string) ($row[$headerMap['name']] ?? ''),
+                'email' => (string) ($row[$headerMap['email']] ?? ''),
+                'password' => (string) ($row[$headerMap['password']] ?? ''),
+            ];
 
-            $rowError = $this->validateRow($name, $email, $password, $rowIndex);
-            if ($rowError !== null) {
-                $errors[] = $rowError;
-                continue;
+            if (count($currentChunk) >= self::CHUNK_SIZE) {
+                $batch->add([new ProcessImportChunk(
+                    importId: $importId,
+                    rows: $currentChunk,
+                    startRowIndex: $chunkStartRow
+                )]);
+                $currentChunk = [];
+                $chunkStartRow = $rowIndex + 1;
             }
 
-            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = ['row' => $rowIndex, 'message' => 'Invalid email.'];
-                continue;
-            }
+            $rowIndex++;
+        }
 
-            $existingUser = $this->userRepository->findByEmail($email);
-
-            if ($existingUser !== null) {
-                $existingUser->updateName($name);
-                $existingUser->updatePassword(Hash::make($password));
-                $this->userRepository->save($existingUser);
-                $updated++;
-            } else {
-                try {
-                    $emailVo = new Email($email);
-                } catch (\Throwable) {
-                    $errors[] = ['row' => $rowIndex, 'message' => 'Invalid email.'];
-                    continue;
-                }
-                $user = new User(
-                    id: null,
-                    name: $name,
-                    email: $emailVo,
-                    password: Hash::make($password)
-                );
-                $this->userRepository->save($user);
-                $created++;
-            }
+        // Remaining rows
+        if ($currentChunk !== []) {
+            $batch->add([new ProcessImportChunk(
+                importId: $importId,
+                rows: $currentChunk,
+                startRowIndex: $chunkStartRow
+            )]);
         }
 
         fclose($stream);
 
-        return new ImportUsersResponse($created, $updated, $errors);
+        $this->importRepository->updateStatus($importId, 'processing');
+
+        return new ImportUsersResponse($importId, 'processing');
     }
 
     /**
@@ -149,26 +173,5 @@ class ImportUsersUseCase
         }
 
         return true;
-    }
-
-    /**
-     * @return array{row: int, message: string}|null
-     */
-    private function validateRow(string $name, string $email, string $password, int $rowIndex): ?array
-    {
-        if ($name === '') {
-            return ['row' => $rowIndex, 'message' => 'Name is required.'];
-        }
-        if ($email === '') {
-            return ['row' => $rowIndex, 'message' => 'Email is required.'];
-        }
-        if ($password === '') {
-            return ['row' => $rowIndex, 'message' => 'Password is required.'];
-        }
-        if (strlen($password) < self::MIN_PASSWORD_LENGTH) {
-            return ['row' => $rowIndex, 'message' => 'Password must be at least ' . self::MIN_PASSWORD_LENGTH . ' characters.'];
-        }
-
-        return null;
     }
 }

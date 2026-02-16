@@ -6,6 +6,7 @@ use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Domain\Entities\User;
 use App\Core\Domain\ValueObjects\Email;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use Illuminate\Support\Facades\DB;
 
 class EloquentUserRepository implements UserRepositoryInterface
 {
@@ -57,6 +58,21 @@ class EloquentUserRepository implements UserRepositoryInterface
             ->map(fn (UserModel $model) => $this->toEntity($model))
             ->values()
             ->all();
+    }
+
+    public function upsertBatch(array $usersData): array
+    {
+        $emails = array_column($usersData, 'email');
+        $existingCount = UserModel::whereIn('email', $emails)->count();
+
+        // Use DB::table() to bypass UserModel's 'hashed' password cast,
+        // since passwords are already hashed by the job before calling this method.
+        DB::table('users')->upsert($usersData, ['email'], ['name', 'password', 'updated_at']);
+
+        return [
+            'created' => count($usersData) - $existingCount,
+            'updated' => $existingCount,
+        ];
     }
 
     private function toEntity(UserModel $model): User
