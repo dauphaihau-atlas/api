@@ -2,8 +2,8 @@
 
 namespace App\Core\Application\UseCases\User\CreateUser;
 
+use App\Core\Application\Contracts\UserCreatedNotifierInterface;
 use App\Core\Application\Contracts\UserRepositoryInterface;
-use App\Core\Application\Services\EmailServiceInterface;
 use App\Core\Domain\Entities\User;
 use App\Core\Domain\ValueObjects\Email;
 use App\Exceptions\ConflictException;
@@ -14,7 +14,7 @@ class CreateUserUseCase
 {
     public function __construct(
         private readonly UserRepositoryInterface $userRepository,
-        private readonly EmailServiceInterface $emailService
+        private readonly UserCreatedNotifierInterface $userCreatedNotifier
     ) {
     }
 
@@ -35,16 +35,16 @@ class CreateUserUseCase
 
         $savedUser = $this->userRepository->save($user);
 
-        $this->emailService->send(
-            $savedUser->getEmail()->getValue(),
-            'Welcome!',
-            "Welcome {$savedUser->getName()}!"
-        );
-
         $id = $savedUser->getId();
         if ($id === null) {
             throw new InternalServerException('User was saved but ID was not returned');
         }
+
+        $this->userCreatedNotifier->notifyUserCreated(
+            $id,
+            $savedUser->getName(),
+            $savedUser->getEmail()->getValue()
+        );
 
         return new CreateUserResponse(
             id: $id,
