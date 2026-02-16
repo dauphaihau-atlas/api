@@ -1,0 +1,39 @@
+---
+description: Prefer app/Exceptions over plain JSON responses and status codes in API code
+globs: app/Presentation/Http/**/*.php
+alwaysApply: false
+---
+
+# API error responses: use custom exceptions
+
+**Priority**: Prefer throwing exceptions from `App\Exceptions` instead of returning plain `response()->json(...)` with manual status codes.
+
+- Use the existing exception classes in `app/Exceptions/` so the global handler can render consistent API error payloads and status codes.
+- Do **not** write ad-hoc JSON error responses (e.g. `return response()->json(['message' => '...'], 422)` or `404`) in controllers when an app exception fits.
+
+## Map status codes to exceptions
+
+| Situation              | Use exception              | Do not use                          |
+|------------------------|----------------------------|-------------------------------------|
+| Validation / bad input | `ValidationException`      | `response()->json(..., 422)`        |
+| Resource not found     | `NotFoundException`        | `response()->json(..., 404)`        |
+| Unauthorized           | `UnauthorizedException`    | `response()->json(..., 401)`        |
+| Forbidden              | `ForbiddenException`       | `response()->json(..., 403)`        |
+| Conflict               | `ConflictException`        | `response()->json(..., 409)`        |
+| Server / service error | `InternalServerException` or `ServiceUnavailableException` | `response()->json(..., 5xx)` |
+
+## Example
+
+```php
+// ❌ Avoid: plain JSON and status code in controller
+if (! $valid) {
+    return response()->json(['message' => 'Invalid or missing path.'], 422);
+}
+
+// ✅ Prefer: throw app exception (handler returns consistent JSON + status)
+if (! $valid) {
+    throw new ValidationException('Invalid or missing path.');
+}
+```
+
+Import from `App\Exceptions` (e.g. `ValidationException`, `NotFoundException`) and throw with a clear message; avoid duplicating status logic in controllers.
