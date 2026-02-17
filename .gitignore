@@ -23,6 +23,13 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
+# Scribe API documentation (generated)
+.scribe/
+storage/app/scribe/
+storage/app/private/scribe/
+/public/vendor/scribe/
+/resources/views/scribe/
+
 # API request data (may contain tokens/secrets)
 /requests/*
 !/requests/*.example.json
