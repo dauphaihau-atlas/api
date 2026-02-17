@@ -95,9 +95,9 @@ class UserImportApiTest extends TestCase
         ]);
 
         $response->assertStatus(202);
-        $response->assertJsonStructure(['id', 'status', 'message']);
-        $this->assertSame('processing', $response->json('status'));
-        $this->assertNotNull($response->json('id'));
+        $response->assertJsonStructure(['data' => ['id', 'status'], 'message']);
+        $this->assertSame('processing', $response->json('data.status'));
+        $this->assertNotNull($response->json('data.id'));
 
         // Verify file stored on disk
         $disk = Storage::disk(config('filesystems.imports_disk', 'local'));
@@ -106,7 +106,7 @@ class UserImportApiTest extends TestCase
 
         // Verify import record created
         $this->assertDatabaseHas('user_imports', [
-            'id' => $response->json('id'),
+            'id' => $response->json('data.id'),
             'total_rows' => 2,
         ]);
 
@@ -155,12 +155,14 @@ class UserImportApiTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
-            'id', 'status', 'total_rows', 'processed_rows',
-            'created', 'updated', 'errors', 'progress_percentage',
-            'started_at', 'completed_at',
+            'data' => [
+                'id', 'status', 'total_rows', 'processed_rows',
+                'created', 'updated', 'errors', 'progress_percentage',
+                'started_at', 'completed_at',
+            ],
         ]);
-        $this->assertSame('processing', $response->json('status'));
-        $this->assertEquals(50, $response->json('progress_percentage'));
+        $this->assertSame('processing', $response->json('data.status'));
+        $this->assertEquals(50, $response->json('data.progress_percentage'));
     }
 
     public function test_import_status_returns_404_for_nonexistent_import(): void

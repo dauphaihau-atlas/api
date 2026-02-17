@@ -61,10 +61,9 @@ class UserExportApiTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
-            'path',
-            'url',
+            'data' => ['path', 'url'],
         ]);
-        $path = $response->json('path');
+        $path = $response->json('data.path');
         $this->assertStringStartsWith('exports/users-', $path);
         $this->assertStringEndsWith('.csv', $path);
 
@@ -88,7 +87,7 @@ class UserExportApiTest extends TestCase
             'Accept' => 'application/json',
         ]);
         $exportResponse->assertStatus(200);
-        $url = $exportResponse->json('url');
+        $url = $exportResponse->json('data.url');
         $this->assertNotEmpty($url);
 
         $downloadResponse = $this->get($url, [

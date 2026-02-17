@@ -51,8 +51,8 @@ class AvatarApiTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-        $response->assertJsonStructure(['id', 'name', 'email', 'avatar_url', 'created_at']);
-        $this->assertNotEmpty($response->json('avatar_url'));
+        $response->assertJsonStructure(['data' => ['id', 'name', 'email', 'avatar_url', 'created_at']]);
+        $this->assertNotEmpty($response->json('data.avatar_url'));
 
         $user->refresh();
         $this->assertNotNull($user->avatar_path);
@@ -117,9 +117,9 @@ class AvatarApiTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-        $response->assertJsonStructure(['id', 'name', 'email', 'avatar_url', 'created_at']);
-        $response->assertJsonPath('id', $targetUser->id);
-        $this->assertNotEmpty($response->json('avatar_url'));
+        $response->assertJsonStructure(['data' => ['id', 'name', 'email', 'avatar_url', 'created_at']]);
+        $response->assertJsonPath('data.id', $targetUser->id);
+        $this->assertNotEmpty($response->json('data.avatar_url'));
 
         $targetUser->refresh();
         $this->assertNotNull($targetUser->avatar_path);
