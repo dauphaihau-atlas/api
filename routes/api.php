@@ -77,7 +77,8 @@ Route::get('health', function (): JsonResponse {
 });
 
 Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
-    Route::post('login', [AuthController::class, 'login']);
+    Route::post('login', [AuthController::class, 'login'])
+        ->middleware('throttle.api:login');
     Route::post('register', [AuthController::class, 'register']);
 
     Route::middleware('auth:sanctum')->group(function (): void {
@@ -91,12 +92,12 @@ Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
         Route::post('users', [UserController::class, 'store'])
             ->middleware('authorize.user:create');
 
-        Route::middleware('authorize.user:import')->group(function (): void {
+        Route::middleware(['authorize.user:import', 'throttle.api:heavy'])->group(function (): void {
             Route::post('users/import', [UserController::class, 'import']);
             Route::get('users/import/{id}/status', [UserController::class, 'importStatus']);
         });
 
-        Route::middleware('authorize.user:export')->group(function (): void {
+        Route::middleware(['authorize.user:export', 'throttle.api:heavy'])->group(function (): void {
             Route::get('users/export', [UserController::class, 'export']);
             Route::get('users/export/download', [UserController::class, 'downloadExport'])
                 ->middleware('signed')

@@ -13,6 +13,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
@@ -60,6 +61,14 @@ return Application::configure(basePath: dirname(__DIR__))
             // Domain exception: InvalidEmailException maps to 422
             if ($e instanceof InvalidEmailException) {
                 throw new ValidationException($e->getMessage());
+            }
+
+            // Rate limiting: too many requests (429)
+            if ($e instanceof TooManyRequestsHttpException) {
+                return response()->json(
+                    ['message' => 'Too many requests. Please try again later.'],
+                    429,
+                )->withHeaders($e->getHeaders());
             }
 
             // Authorization: gate/policy denied (403)

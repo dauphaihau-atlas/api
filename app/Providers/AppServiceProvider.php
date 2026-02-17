@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use App\Infrastructure\Persistence\Eloquent\Observers\UserModelObserver;
 use App\Presentation\Http\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -29,10 +30,20 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        RateLimiter::for('login', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
+
+        RateLimiter::for('heavy', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
+
         Gate::define('admin', function ($user) {
             return $user !== null && ($user->role ?? null) === 'admin';
         });
 
         Gate::policy(UserModel::class, UserPolicy::class);
+
+        UserModel::observe(UserModelObserver::class);
     }
 }
