@@ -60,6 +60,28 @@ class EloquentUserRepository implements UserRepositoryInterface
             ->all();
     }
 
+    /**
+     * @return User[]
+     */
+    public function findPaginated(int $page, int $perPage): array
+    {
+        $perPage = max(1, min($perPage, 100));
+        $offset = max(0, ($page - 1) * $perPage);
+
+        return UserModel::orderBy('id')
+            ->offset($offset)
+            ->limit($perPage)
+            ->get()
+            ->map(fn (UserModel $model) => $this->toEntity($model))
+            ->values()
+            ->all();
+    }
+
+    public function countAll(): int
+    {
+        return UserModel::count();
+    }
+
     public function upsertBatch(array $usersData): array
     {
         $emails = array_column($usersData, 'email');

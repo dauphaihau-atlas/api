@@ -20,6 +20,13 @@ interface UserRepositoryInterface
     public function findAll(): array;
 
     /**
+     * @return User[]
+     */
+    public function findPaginated(int $page, int $perPage): array;
+
+    public function countAll(): int;
+
+    /**
      * Bulk upsert users (insert new, update existing by email).
      *
      * @param  array<int, array{name: string, email: string, password: string, role: string, created_at: string, updated_at: string}>  $usersData
