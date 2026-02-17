@@ -2,6 +2,8 @@
 
 namespace App\Core\Domain\Entities;
 
+use DateTimeImmutable;
+
 class UserImport
 {
     public function __construct(
@@ -14,13 +16,13 @@ class UserImport
         private int $createdCount = 0,
         private int $updatedCount = 0,
         private array $errors = [],
-        private ?\DateTimeImmutable $startedAt = null,
-        private ?\DateTimeImmutable $completedAt = null,
-        private ?\DateTimeImmutable $createdAt = null,
-        private ?\DateTimeImmutable $updatedAt = null
+        private ?DateTimeImmutable $startedAt = null,
+        private ?DateTimeImmutable $completedAt = null,
+        private ?DateTimeImmutable $createdAt = null,
+        private ?DateTimeImmutable $updatedAt = null
     ) {
-        $this->createdAt = $createdAt ?? new \DateTimeImmutable();
-        $this->updatedAt = $updatedAt ?? new \DateTimeImmutable();
+        $this->createdAt = $createdAt ?? new DateTimeImmutable;
+        $this->updatedAt = $updatedAt ?? new DateTimeImmutable;
     }
 
     public function getId(): ?int
@@ -71,22 +73,22 @@ class UserImport
         return $this->errors;
     }
 
-    public function getStartedAt(): ?\DateTimeImmutable
+    public function getStartedAt(): ?DateTimeImmutable
     {
         return $this->startedAt;
     }
 
-    public function getCompletedAt(): ?\DateTimeImmutable
+    public function getCompletedAt(): ?DateTimeImmutable
     {
         return $this->completedAt;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function getUpdatedAt(): \DateTimeImmutable
+    public function getUpdatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
     }
@@ -94,27 +96,27 @@ class UserImport
     public function markAsProcessing(): void
     {
         $this->status = 'processing';
-        $this->startedAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->startedAt = new DateTimeImmutable;
+        $this->updatedAt = new DateTimeImmutable;
     }
 
     public function markAsCompleted(): void
     {
         $this->status = 'completed';
-        $this->completedAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->completedAt = new DateTimeImmutable;
+        $this->updatedAt = new DateTimeImmutable;
     }
 
     public function markAsFailed(): void
     {
         $this->status = 'failed';
-        $this->completedAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->completedAt = new DateTimeImmutable;
+        $this->updatedAt = new DateTimeImmutable;
     }
 
     public function updateBatchId(string $batchId): void
     {
         $this->batchId = $batchId;
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable;
     }
 }

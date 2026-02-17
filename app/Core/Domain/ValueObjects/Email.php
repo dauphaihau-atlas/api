@@ -9,7 +9,7 @@ class Email
     public function __construct(
         private readonly string $value
     ) {
-        if ($value === '' || !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+        if ($value === '' || ! filter_var($value, FILTER_VALIDATE_EMAIL)) {
             throw new InvalidEmailException("Invalid email address: {$value}");
         }
     }

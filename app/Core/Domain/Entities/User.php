@@ -3,6 +3,7 @@
 namespace App\Core\Domain\Entities;
 
 use App\Core\Domain\ValueObjects\Email;
+use DateTimeImmutable;
 
 class User
 {
@@ -13,11 +14,11 @@ class User
         private ?string $password = null,
         private ?string $avatarPath = null,
         private ?string $role = null,
-        private ?\DateTimeImmutable $createdAt = null,
-        private ?\DateTimeImmutable $updatedAt = null
+        private ?DateTimeImmutable $createdAt = null,
+        private ?DateTimeImmutable $updatedAt = null
     ) {
-        $this->createdAt = $createdAt ?? new \DateTimeImmutable();
-        $this->updatedAt = $updatedAt ?? new \DateTimeImmutable();
+        $this->createdAt = $createdAt ?? new DateTimeImmutable;
+        $this->updatedAt = $updatedAt ?? new DateTimeImmutable;
     }
 
     public function getId(): ?int
@@ -40,12 +41,12 @@ class User
         return $this->password;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function getUpdatedAt(): \DateTimeImmutable
+    public function getUpdatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
     }
@@ -63,24 +64,24 @@ class User
     public function updateAvatarPath(?string $path): void
     {
         $this->avatarPath = $path;
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable;
     }
 
     public function updateName(string $name): void
     {
         $this->name = $name;
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable;
     }
 
     public function updateEmail(Email $email): void
     {
         $this->email = $email;
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable;
     }
 
     public function updatePassword(string $password): void
     {
         $this->password = $password;
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable;
     }
 }
