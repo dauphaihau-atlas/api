@@ -5,6 +5,7 @@ namespace App\Infrastructure\Auth;
 use App\Core\Application\Contracts\AuthServiceInterface;
 use App\Core\Application\DTOs\AuthUserDTO;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use DateTimeImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -12,8 +13,7 @@ class SanctumAuthService implements AuthServiceInterface
 {
     public function __construct(
         private readonly Request $request
-    ) {
-    }
+    ) {}
 
     public function attempt(string $email, string $password): ?AuthUserDTO
     {
@@ -23,8 +23,8 @@ class SanctumAuthService implements AuthServiceInterface
         }
 
         $createdAt = $user->created_at !== null
-            ? \DateTimeImmutable::createFromMutable($user->created_at)
-            : new \DateTimeImmutable();
+            ? DateTimeImmutable::createFromMutable($user->created_at)
+            : new DateTimeImmutable;
 
         return new AuthUserDTO(
             id: $user->id,

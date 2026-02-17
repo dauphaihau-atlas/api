@@ -12,7 +12,7 @@ class EloquentUserImportRepository implements UserImportRepositoryInterface
     public function save(UserImport $import): UserImport
     {
         if ($import->getId() === null) {
-            $model = new UserImportModel();
+            $model = new UserImportModel;
         } else {
             $model = UserImportModel::findOrFail($import->getId());
         }

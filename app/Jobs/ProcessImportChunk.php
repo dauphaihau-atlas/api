@@ -26,7 +26,6 @@ class ProcessImportChunk implements ShouldQueue
     private const MIN_PASSWORD_LENGTH = 8;
 
     /**
-     * @param  int  $importId
      * @param  array<int, array{name: string, email: string, password: string}>  $rows
      * @param  int  $startRowIndex  Row number of the first row in this chunk (for error reporting)
      */
@@ -34,8 +33,7 @@ class ProcessImportChunk implements ShouldQueue
         public readonly int $importId,
         public readonly array $rows,
         public readonly int $startRowIndex
-    ) {
-    }
+    ) {}
 
     public function handle(
         UserRepositoryInterface $userRepository,

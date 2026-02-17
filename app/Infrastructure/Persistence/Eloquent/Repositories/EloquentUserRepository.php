@@ -27,7 +27,7 @@ class EloquentUserRepository implements UserRepositoryInterface
     public function save(User $user): User
     {
         if ($user->getId() === null) {
-            $model = new UserModel();
+            $model = new UserModel;
         } else {
             $model = UserModel::findOrFail($user->getId());
         }

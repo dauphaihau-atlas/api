@@ -3,8 +3,8 @@
 namespace App\Infrastructure\Notifications;
 
 use App\Core\Application\Contracts\UserCreatedNotifierInterface;
-use App\Notifications\UserCreatedNotification;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use App\Notifications\UserCreatedNotification;
 use Illuminate\Support\Facades\Log;
 
 class LaravelUserCreatedNotifier implements UserCreatedNotifierInterface

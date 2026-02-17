@@ -13,8 +13,7 @@ class UserCreatedNotification extends Notification implements ShouldQueue
 
     public function __construct(
         private readonly string $userName
-    ) {
-    }
+    ) {}
 
     /**
      * Get the notification's delivery channels.

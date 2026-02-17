@@ -21,7 +21,7 @@ class LogEmailService implements EmailServiceInterface
         Log::info('Email (log)', [
             'to' => $to,
             'subject' => $subject,
-            'body_preview' => strlen($body) > 200 ? substr($body, 0, 200) . '...' : $body,
+            'body_preview' => strlen($body) > 200 ? substr($body, 0, 200).'...' : $body,
         ]);
 
         return true;
