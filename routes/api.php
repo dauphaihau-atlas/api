@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+
 
 /**
  * Health check
@@ -21,7 +23,7 @@ use Symfony\Component\HttpFoundation\Response;
  * @response 200 {"status":"healthy","checks":{"database":"ok","redis":"ok","minio":null}}
  * @response 503 {"message":"Database connection failed","code":"DB_CONNECTION_FAILED","context":{"status":"unhealthy","checks":{"database":"error","redis":null,"minio":null}}}
  */
-Route::get('health', function (): \Illuminate\Http\JsonResponse {
+Route::get('health', function (): JsonResponse {
     $checks = [
         'database' => null,
         'redis' => null,
