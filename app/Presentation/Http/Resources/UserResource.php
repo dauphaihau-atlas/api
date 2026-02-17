@@ -14,9 +14,15 @@ class UserResource extends JsonResource
     {
         if ($this->resource instanceof User) {
             $avatarPath = $this->resource->getAvatarPath();
-            $avatarUrl = $avatarPath !== null && $avatarPath !== ''
-                ? Storage::disk(config('filesystems.avatars_disk', 'public'))->url($avatarPath)
-                : null;
+            $avatarUrl = null;
+            if ($avatarPath !== null && $avatarPath !== '') {
+                try {
+                    $avatarUrl = Storage::disk(config('filesystems.avatars_disk', 'public'))->url($avatarPath);
+                } catch (\Throwable $e) {
+                    // Avoid 500 when disk is misconfigured or url() fails; expose in debug if needed
+                    $avatarUrl = null;
+                }
+            }
 
             return [
                 'id' => $this->resource->getId(),

@@ -41,20 +41,31 @@ class UserController extends Controller
     /**
      * List users
      *
-     * Retrieve all users. Requires admin role.
+     * Retrieve users with pagination. Requires admin role.
+     * Query params: page (default 1), per_page (default 15, max 100).
      *
      * @group Users
      * @authenticated
      *
-     * @response 200 [{"id":1,"name":"Admin","email":"admin@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}]
+     * @response 200 {"data":[{"id":1,"name":"Admin","email":"admin@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}],"meta":{"total":100,"per_page":15,"current_page":1}}
      * @response 401 {"message":"Unauthenticated."}
      * @response 403 {"message":"Forbidden."}
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $users = $this->userRepository->findAll();
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = min(max(1, (int) $request->input('per_page', 15)), 100);
+        $users = $this->userRepository->findPaginated($page, $perPage);
+        $total = $this->userRepository->countAll();
 
-        return response()->json(UserResource::collection($users));
+        return response()->json([
+            'data' => UserResource::collection($users),
+            'meta' => [
+                'total' => $total,
+                'per_page' => $perPage,
+                'current_page' => $page,
+            ],
+        ]);
     }
 
     /**
