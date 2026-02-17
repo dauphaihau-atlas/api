@@ -4,9 +4,11 @@ namespace App\Core\Application\UseCases\User\ExportUsers;
 
 use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Domain\Entities\User;
+use DateTimeImmutable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Throwable;
 
 class ExportUsersUseCase
 {
@@ -47,14 +49,14 @@ class ExportUsersUseCase
         $expiresAt = null;
 
         if ($diskName !== 'local') {
-            $expiresAt = new \DateTimeImmutable('+' . self::TEMPORARY_URL_EXPIRY_MINUTES . ' minutes');
+            $expiresAt = new DateTimeImmutable('+'.self::TEMPORARY_URL_EXPIRY_MINUTES.' minutes');
             try {
                 // temporaryUrl($path, $expiration) is a method on Laravel’s filesystem adapter.
                 // It returns a time-limited, pre-signed URL that lets someone download the file from the
                 // storage backend without going through your app and without needing your storage credentials.
                 /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
                 $url = $disk->temporaryUrl($path, $expiresAt);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 $url = null;
                 $expiresAt = null;
             }
@@ -106,7 +108,7 @@ class ExportUsersUseCase
     private function escapeCsvField(string $value): string
     {
         if (str_contains($value, '"') || str_contains($value, ',') || str_contains($value, "\n") || str_contains($value, "\r")) {
-            return '"' . str_replace('"', '""', $value) . '"';
+            return '"'.str_replace('"', '""', $value).'"';
         }
 
         return $value;

@@ -17,6 +17,5 @@ class GetImportStatusResponse
         public readonly array $errors,
         public readonly ?string $startedAt,
         public readonly ?string $completedAt
-    ) {
-    }
+    ) {}
 }

@@ -6,6 +6,5 @@ class ImportUsersRequest
 {
     public function __construct(
         public readonly string $path
-    ) {
-    }
+    ) {}
 }

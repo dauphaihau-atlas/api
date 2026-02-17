@@ -6,6 +6,5 @@ class GetImportStatusRequest
 {
     public function __construct(
         public readonly int $importId
-    ) {
-    }
+    ) {}
 }

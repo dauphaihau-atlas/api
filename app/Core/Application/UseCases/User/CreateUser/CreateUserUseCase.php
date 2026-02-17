@@ -15,8 +15,7 @@ class CreateUserUseCase
     public function __construct(
         private readonly UserRepositoryInterface $userRepository,
         private readonly UserCreatedNotifierInterface $userCreatedNotifier
-    ) {
-    }
+    ) {}
 
     public function execute(CreateUserRequest $request): CreateUserResponse
     {

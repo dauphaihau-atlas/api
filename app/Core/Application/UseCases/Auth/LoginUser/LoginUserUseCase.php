@@ -8,8 +8,7 @@ class LoginUserUseCase
 {
     public function __construct(
         private readonly AuthServiceInterface $authService
-    ) {
-    }
+    ) {}
 
     public function execute(LoginUserRequest $request): ?LoginUserResponse
     {

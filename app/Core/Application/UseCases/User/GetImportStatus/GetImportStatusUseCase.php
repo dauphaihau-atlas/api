@@ -8,8 +8,7 @@ class GetImportStatusUseCase
 {
     public function __construct(
         private readonly UserImportRepositoryInterface $importRepository
-    ) {
-    }
+    ) {}
 
     public function execute(GetImportStatusRequest $request): ?GetImportStatusResponse
     {

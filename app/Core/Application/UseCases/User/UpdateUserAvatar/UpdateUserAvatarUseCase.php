@@ -10,8 +10,7 @@ class UpdateUserAvatarUseCase
 {
     public function __construct(
         private readonly UserRepositoryInterface $userRepository
-    ) {
-    }
+    ) {}
 
     public function execute(int $userId, string $avatarPath): User
     {

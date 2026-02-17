@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ImportUsersUseCase
 {
@@ -19,8 +20,7 @@ class ImportUsersUseCase
 
     public function __construct(
         private readonly UserImportRepositoryInterface $importRepository
-    ) {
-    }
+    ) {}
 
     public function execute(ImportUsersRequest $request): ImportUsersResponse
     {
@@ -90,7 +90,7 @@ class ImportUsersUseCase
                     );
                 }
             })
-            ->catch(function (Batch $batch, \Throwable $e) use ($importId): void {
+            ->catch(function (Batch $batch, Throwable $e) use ($importId): void {
                 Log::error('Import batch failed', [
                     'import_id' => $importId,
                     'error' => $e->getMessage(),

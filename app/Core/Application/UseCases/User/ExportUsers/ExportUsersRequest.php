@@ -4,7 +4,5 @@ namespace App\Core\Application\UseCases\User\ExportUsers;
 
 class ExportUsersRequest
 {
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 }

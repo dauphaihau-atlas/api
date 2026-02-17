@@ -8,6 +8,5 @@ class ImportUsersResponse
         public readonly ?int $importId,
         public readonly string $status,
         public readonly ?string $message = null
-    ) {
-    }
+    ) {}
 }

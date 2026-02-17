@@ -8,8 +8,7 @@ class LogoutUserUseCase
 {
     public function __construct(
         private readonly AuthServiceInterface $authService
-    ) {
-    }
+    ) {}
 
     public function execute(): void
     {
