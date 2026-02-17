@@ -74,14 +74,43 @@ class ImportUsersUseCase
         $batch = Bus::batch([])
             ->name("User Import #{$importId}")
             ->then(function (Batch $batch) use ($importId): void {
-                app(UserImportRepositoryInterface::class)->updateStatus($importId, 'completed');
+                $repo = app(UserImportRepositoryInterface::class);
+                $repo->updateStatus($importId, 'completed');
+
+                $import = $repo->findById($importId);
+                if ($import !== null) {
+                    \App\Infrastructure\Broadcasting\Events\ImportCompleted::dispatch(
+                        $importId,
+                        'completed',
+                        $import->getTotalRows(),
+                        $import->getProcessedRows(),
+                        $import->getCreatedCount(),
+                        $import->getUpdatedCount(),
+                        $import->getErrors()
+                    );
+                }
             })
             ->catch(function (Batch $batch, \Throwable $e) use ($importId): void {
                 Log::error('Import batch failed', [
                     'import_id' => $importId,
                     'error' => $e->getMessage(),
                 ]);
-                app(UserImportRepositoryInterface::class)->updateStatus($importId, 'failed');
+
+                $repo = app(UserImportRepositoryInterface::class);
+                $repo->updateStatus($importId, 'failed');
+
+                $import = $repo->findById($importId);
+                if ($import !== null) {
+                    \App\Infrastructure\Broadcasting\Events\ImportCompleted::dispatch(
+                        $importId,
+                        'failed',
+                        $import->getTotalRows(),
+                        $import->getProcessedRows(),
+                        $import->getCreatedCount(),
+                        $import->getUpdatedCount(),
+                        $import->getErrors()
+                    );
+                }
             })
             ->dispatch();
 
