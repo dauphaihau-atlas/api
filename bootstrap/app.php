@@ -16,6 +16,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
+        $schedule->command('telescope:prune')->daily();
     })
     ->withRouting(
         web: __DIR__ . '/../routes/web.php',
