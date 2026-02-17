@@ -32,7 +32,16 @@ class AuthController extends Controller
     }
 
     /**
-     * Login: email + password, returns token and user.
+     * Login
+     *
+     * Authenticate with email and password. Returns a bearer token and user details.
+     *
+     * @group Authentication
+     * @unauthenticated
+     *
+     * @response 200 {"token":"1|abc123...","user":{"id":1,"name":"Admin","email":"admin@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}}
+     * @response 401 {"message":"Invalid credentials"}
+     * @response 422 {"message":"Validation failed","errors":{"email":["The email field is required."]}}
      */
     public function login(LoginRequest $request): JsonResponse
     {
@@ -73,7 +82,15 @@ class AuthController extends Controller
     }
 
     /**
-     * Register: create user and return token + user.
+     * Register
+     *
+     * Create a new user account and return a bearer token with user details.
+     *
+     * @group Authentication
+     * @unauthenticated
+     *
+     * @response 201 {"token":"2|xyz789...","user":{"id":2,"name":"John Doe","email":"john@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}}
+     * @response 422 {"message":"Validation failed","errors":{"email":["The email has already been taken."]}}
      */
     public function register(HttpCreateUserRequest $request): JsonResponse
     {
@@ -98,7 +115,15 @@ class AuthController extends Controller
     }
 
     /**
-     * Logout: revoke current API token.
+     * Logout
+     *
+     * Revoke the current API token.
+     *
+     * @group Authentication
+     * @authenticated
+     *
+     * @response 204 scenario="Success" {}
+     * @response 401 {"message":"Unauthenticated."}
      */
     public function logout(): JsonResponse
     {
@@ -108,7 +133,15 @@ class AuthController extends Controller
     }
 
     /**
-     * Me: return the currently authenticated user (requires auth:sanctum).
+     * Get current user
+     *
+     * Return the currently authenticated user's details.
+     *
+     * @group Authentication
+     * @authenticated
+     *
+     * @response 200 {"id":1,"name":"Admin","email":"admin@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}
+     * @response 401 {"message":"Unauthenticated."}
      */
     public function me(Request $request): JsonResponse
     {

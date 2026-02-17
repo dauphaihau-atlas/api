@@ -39,7 +39,16 @@ class UserController extends Controller
     }
 
     /**
-     * List users.
+     * List users
+     *
+     * Retrieve all users. Requires admin role.
+     *
+     * @group Users
+     * @authenticated
+     *
+     * @response 200 [{"id":1,"name":"Admin","email":"admin@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}]
+     * @response 401 {"message":"Unauthenticated."}
+     * @response 403 {"message":"Forbidden."}
      */
     public function index(): JsonResponse
     {
@@ -49,7 +58,15 @@ class UserController extends Controller
     }
 
     /**
-     * Create a user.
+     * Create a user
+     *
+     * Create a new user. Requires admin role.
+     *
+     * @group Users
+     * @authenticated
+     *
+     * @response 201 {"id":2,"name":"John Doe","email":"john@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}
+     * @response 422 {"message":"Validation failed","errors":{"email":["The email has already been taken."]}}
      */
     public function store(HttpCreateUserRequest $request): JsonResponse
     {
@@ -70,8 +87,15 @@ class UserController extends Controller
     }
 
     /**
-     * Bulk import users from CSV (admin only).
-     * Returns 202 Accepted with import ID for async processing.
+     * Import users
+     *
+     * Bulk import users from a CSV file. Processed asynchronously. Requires admin role.
+     *
+     * @group Users
+     * @authenticated
+     *
+     * @response 202 {"id":1,"status":"processing","message":"Import started successfully."}
+     * @response 422 {"message":"Validation failed","errors":{"file":["The file field is required."]}}
      */
     public function import(HttpImportUsersRequest $request): JsonResponse
     {
@@ -119,7 +143,17 @@ class UserController extends Controller
     }
 
     /**
-     * Get import progress/status (admin only).
+     * Get import status
+     *
+     * Retrieve the progress and status of a user import job. Requires admin role.
+     *
+     * @group Users
+     * @authenticated
+     *
+     * @urlParam id integer required The import ID. Example: 1
+     *
+     * @response 200 {"id":1,"status":"completed","total_rows":100,"processed_rows":100,"created":95,"updated":5,"errors":[],"progress_percentage":100,"started_at":"2025-01-01 00:00:00","completed_at":"2025-01-01 00:01:00"}
+     * @response 404 {"message":"Import not found."}
      */
     public function importStatus(int $id): JsonResponse
     {
@@ -148,7 +182,14 @@ class UserController extends Controller
     }
 
     /**
-     * Export users as CSV (admin only). Writes file to storage and returns download URL.
+     * Export users
+     *
+     * Export all users as a CSV file. Returns a signed download URL. Requires admin role.
+     *
+     * @group Users
+     * @authenticated
+     *
+     * @response 200 {"path":"exports/users-2025-01-01.csv","url":"http://localhost/api/v1/users/export/download?path=exports/users-2025-01-01.csv&signature=abc123","expires_at":"2025-01-01T00:15:00+00:00"}
      */
     public function export(): JsonResponse
     {
@@ -191,9 +232,18 @@ class UserController extends Controller
     }
 
     /**
-     * Download an export file by path (signed URL; admin only).
+     * Download export
      *
-     * @return JsonResponse|StreamedResponse
+     * Download an exported CSV file via a signed URL. Requires admin role.
+     *
+     * @group Users
+     * @authenticated
+     *
+     * @queryParam path string required The export file path. Example: exports/users-2025-01-01.csv
+     *
+     * @response 200 scenario="CSV file download" {}
+     * @response 404 {"message":"Export file not found."}
+     * @response 422 {"message":"Invalid or missing path."}
      */
     public function downloadExport(Request $request): JsonResponse|StreamedResponse
     {

@@ -24,7 +24,15 @@ class AvatarController extends Controller
     }
 
     /**
+     * Upload my avatar
+     *
      * Upload or replace the authenticated user's avatar.
+     *
+     * @group Avatars
+     * @authenticated
+     *
+     * @response 200 {"id":1,"name":"Admin","email":"admin@example.com","avatar_url":"http://localhost/storage/avatars/abc123.jpg","created_at":"2025-01-01 00:00:00"}
+     * @response 422 {"message":"Validation failed","errors":{"avatar":["The avatar field is required."]}}
      */
     public function updateMe(UploadAvatarRequest $request): JsonResponse
     {
@@ -38,7 +46,17 @@ class AvatarController extends Controller
     }
 
     /**
-     * Upload or replace a user's avatar (admin only).
+     * Upload user avatar
+     *
+     * Upload or replace a specific user's avatar. Requires admin role.
+     *
+     * @group Avatars
+     * @authenticated
+     *
+     * @urlParam user integer required The user ID. Example: 1
+     *
+     * @response 200 {"id":1,"name":"Admin","email":"admin@example.com","avatar_url":"http://localhost/storage/avatars/abc123.jpg","created_at":"2025-01-01 00:00:00"}
+     * @response 422 {"message":"Validation failed","errors":{"avatar":["The avatar field is required."]}}
      */
     public function updateUser(UploadAvatarRequest $request, UserModel $user): JsonResponse
     {
