@@ -19,6 +19,7 @@ use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
 use App\Presentation\Http\Requests\ImportUsersRequest as HttpImportUsersRequest;
 use App\Presentation\Http\Resources\UserResource;
 use App\Presentation\Http\Responses\ApiResponse;
+use DateTimeInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class UserController extends Controller
 {
@@ -36,8 +38,7 @@ class UserController extends Controller
         private readonly GetImportStatusUseCase $getImportStatusUseCase,
         private readonly ExportUsersUseCase $exportUsersUseCase,
         private readonly UserRepositoryInterface $userRepository
-    ) {
-    }
+    ) {}
 
     /**
      * List users
@@ -46,6 +47,7 @@ class UserController extends Controller
      * Query params: page (default 1), per_page (default 15, max 100).
      *
      * @group Users
+     *
      * @authenticated
      *
      * @response 200 {"data":[{"id":1,"name":"Admin","email":"admin@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}],"meta":{"total":100,"per_page":15,"current_page":1}}
@@ -72,6 +74,7 @@ class UserController extends Controller
      * Create a new user. Requires admin role.
      *
      * @group Users
+     *
      * @authenticated
      *
      * @response 201 {"id":2,"name":"John Doe","email":"john@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}
@@ -101,6 +104,7 @@ class UserController extends Controller
      * Bulk import users from a CSV file. Processed asynchronously. Requires admin role.
      *
      * @group Users
+     *
      * @authenticated
      *
      * @response 202 {"id":1,"status":"processing","message":"Import started successfully."}
@@ -121,7 +125,7 @@ class UserController extends Controller
 
         try {
             $path = $storage->putFileAs('imports', $file, $filename);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('User import storage write failed', [
                 'error' => $e->getMessage(),
             ]);
@@ -156,6 +160,7 @@ class UserController extends Controller
      * Retrieve the progress and status of a user import job. Requires admin role.
      *
      * @group Users
+     *
      * @authenticated
      *
      * @urlParam id integer required The import ID. Example: 1
@@ -195,6 +200,7 @@ class UserController extends Controller
      * Export all users as a CSV file. Returns a signed download URL. Requires admin role.
      *
      * @group Users
+     *
      * @authenticated
      *
      * @response 200 {"path":"exports/users-2025-01-01.csv","url":"http://localhost/api/v1/users/export/download?path=exports/users-2025-01-01.csv&signature=abc123","expires_at":"2025-01-01T00:15:00+00:00"}
@@ -202,7 +208,7 @@ class UserController extends Controller
     public function export(): JsonResponse
     {
         try {
-            $response = $this->exportUsersUseCase->execute(new ExportUsersUseCaseRequest());
+            $response = $this->exportUsersUseCase->execute(new ExportUsersUseCaseRequest);
         } catch (RuntimeException $e) {
             Log::error('User export failed', ['error' => $e->getMessage()]);
             throw new ServiceUnavailableException(
@@ -231,7 +237,7 @@ class UserController extends Controller
             'url' => $url,
         ];
         if ($expiresAt !== null) {
-            $payload['expires_at'] = $expiresAt instanceof \DateTimeInterface
+            $payload['expires_at'] = $expiresAt instanceof DateTimeInterface
                 ? $expiresAt->format('c')
                 : $expiresAt->format('c');
         }
@@ -245,6 +251,7 @@ class UserController extends Controller
      * Download an exported CSV file via a signed URL. Requires admin role.
      *
      * @group Users
+     *
      * @authenticated
      *
      * @queryParam path string required The export file path. Example: exports/users-2025-01-01.csv

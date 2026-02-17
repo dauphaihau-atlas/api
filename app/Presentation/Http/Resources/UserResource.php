@@ -7,6 +7,7 @@ use App\Core\Domain\Entities\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class UserResource extends JsonResource
 {
@@ -18,7 +19,7 @@ class UserResource extends JsonResource
             if ($avatarPath !== null && $avatarPath !== '') {
                 try {
                     $avatarUrl = Storage::disk(config('filesystems.avatars_disk', 'public'))->url($avatarPath);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     // Avoid 500 when disk is misconfigured or url() fails; expose in debug if needed
                     $avatarUrl = null;
                 }

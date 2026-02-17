@@ -29,8 +29,7 @@ class AuthController extends Controller
         private readonly CreateUserUseCase $createUserUseCase,
         private readonly AuthServiceInterface $authService,
         private readonly UserRepositoryInterface $userRepository
-    ) {
-    }
+    ) {}
 
     /**
      * Login
@@ -38,6 +37,7 @@ class AuthController extends Controller
      * Authenticate with email and password. Returns a bearer token and user details.
      *
      * @group Authentication
+     *
      * @unauthenticated
      *
      * @response 200 {"token":"1|abc123...","user":{"id":1,"name":"Admin","email":"admin@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}}
@@ -88,6 +88,7 @@ class AuthController extends Controller
      * Create a new user account and return a bearer token with user details.
      *
      * @group Authentication
+     *
      * @unauthenticated
      *
      * @response 201 {"token":"2|xyz789...","user":{"id":2,"name":"John Doe","email":"john@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}}
@@ -121,6 +122,7 @@ class AuthController extends Controller
      * Revoke the current API token.
      *
      * @group Authentication
+     *
      * @authenticated
      *
      * @response 204 scenario="Success" {}
@@ -139,6 +141,7 @@ class AuthController extends Controller
      * Return the currently authenticated user's details.
      *
      * @group Authentication
+     *
      * @authenticated
      *
      * @response 200 {"id":1,"name":"Admin","email":"admin@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}

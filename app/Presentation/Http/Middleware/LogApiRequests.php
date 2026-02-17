@@ -62,11 +62,13 @@ class LogApiRequests
 
         if ($status >= 500) {
             Log::error($message, $context);
+
             return;
         }
 
         if ($status >= 400) {
             Log::warning($message, $context);
+
             return;
         }
 
@@ -143,4 +145,3 @@ class LogApiRequests
         return round($deltaNs / 1_000_000, 2);
     }
 }
-
