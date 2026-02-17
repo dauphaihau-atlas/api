@@ -23,7 +23,7 @@ class ImportUsersUseCaseTest extends TestCase
         Storage::fake(config('filesystems.imports_disk', 'local'));
         Queue::fake();
         $this->useCase = new ImportUsersUseCase(
-            new EloquentUserImportRepository()
+            new EloquentUserImportRepository
         );
     }
 

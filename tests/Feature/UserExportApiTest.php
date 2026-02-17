@@ -38,7 +38,7 @@ class UserExportApiTest extends TestCase
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->get('/api/v1/users/export', [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ]);
 
@@ -55,7 +55,7 @@ class UserExportApiTest extends TestCase
         $token = $admin->createToken('test')->plainTextToken;
 
         $response = $this->get('/api/v1/users/export', [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ]);
 
@@ -83,7 +83,7 @@ class UserExportApiTest extends TestCase
         $token = $admin->createToken('test')->plainTextToken;
 
         $exportResponse = $this->get('/api/v1/users/export', [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ]);
         $exportResponse->assertStatus(200);
@@ -91,7 +91,7 @@ class UserExportApiTest extends TestCase
         $this->assertNotEmpty($url);
 
         $downloadResponse = $this->get($url, [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'text/csv',
         ]);
 

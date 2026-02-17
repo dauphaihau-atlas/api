@@ -6,8 +6,6 @@ use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\Models\UserImportModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
-use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentUserImportRepository;
-use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentUserRepository;
 use App\Jobs\ProcessImportChunk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;

@@ -108,7 +108,7 @@ class LargeImportTest extends TestCase
         echo "Processed: {$import->processed_rows}\n";
         echo "Created: {$import->created_count}\n";
         echo "Updated: {$import->updated_count}\n";
-        echo "Errors: ".count($import->errors ?? [])."\n";
+        echo 'Errors: '.count($import->errors ?? [])."\n";
 
         $this->assertSame(10, $import->processed_rows);
         $this->assertSame(10, $import->created_count);

@@ -46,7 +46,7 @@ class AvatarApiTest extends TestCase
         $response = $this->post('/api/v1/me/avatar', [
             'avatar' => $file,
         ], [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ]);
 
@@ -70,7 +70,7 @@ class AvatarApiTest extends TestCase
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->post('/api/v1/me/avatar', [], [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ]);
 
@@ -91,7 +91,7 @@ class AvatarApiTest extends TestCase
         $response = $this->post("/api/v1/users/{$targetUser->id}/avatar", [
             'avatar' => $file,
         ], [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ]);
 
@@ -112,7 +112,7 @@ class AvatarApiTest extends TestCase
         $response = $this->post("/api/v1/users/{$targetUser->id}/avatar", [
             'avatar' => $file,
         ], [
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ]);
 

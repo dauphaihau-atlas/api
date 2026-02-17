@@ -20,7 +20,7 @@ class ExportUsersUseCaseTest extends TestCase
     {
         parent::setUp();
         Storage::fake(config('filesystems.exports_disk', 'local'));
-        $this->useCase = new ExportUsersUseCase(new EloquentUserRepository());
+        $this->useCase = new ExportUsersUseCase(new EloquentUserRepository);
     }
 
     /**
@@ -39,7 +39,7 @@ class ExportUsersUseCaseTest extends TestCase
             'role' => 'admin',
         ]);
 
-        $response = $this->useCase->execute(new ExportUsersRequest());
+        $response = $this->useCase->execute(new ExportUsersRequest);
 
         $this->assertStringStartsWith('exports/users-', $response->path);
         $this->assertStringEndsWith('.csv', $response->path);
@@ -64,13 +64,13 @@ class ExportUsersUseCaseTest extends TestCase
      */
     public function test_execute_writes_header_only_when_no_users(): void
     {
-        $response = $this->useCase->execute(new ExportUsersRequest());
+        $response = $this->useCase->execute(new ExportUsersRequest);
 
         $this->assertStringStartsWith('exports/users-', $response->path);
         $disk = Storage::disk(config('filesystems.exports_disk', 'local'));
         $this->assertTrue($disk->exists($response->path));
         $content = $disk->get($response->path);
-        $this->assertSame("id,name,email,role,created_at", trim($content));
+        $this->assertSame('id,name,email,role,created_at', trim($content));
         $this->assertNull($response->url);
         $this->assertNull($response->expiresAt);
     }
@@ -80,7 +80,7 @@ class ExportUsersUseCaseTest extends TestCase
      */
     public function test_execute_returns_null_url_and_expires_at_for_local_disk(): void
     {
-        $response = $this->useCase->execute(new ExportUsersRequest());
+        $response = $this->useCase->execute(new ExportUsersRequest);
         $this->assertNull($response->url);
         $this->assertNull($response->expiresAt);
         $this->assertNotEmpty($response->path);
@@ -97,7 +97,7 @@ class ExportUsersUseCaseTest extends TestCase
             'role' => 'user',
         ]);
 
-        $response = $this->useCase->execute(new ExportUsersRequest());
+        $response = $this->useCase->execute(new ExportUsersRequest);
         $content = Storage::disk(config('filesystems.exports_disk', 'local'))->get($response->path);
         $this->assertStringContainsString('"Doe, Jane"', $content);
     }
