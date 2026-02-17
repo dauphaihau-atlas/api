@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use App\Presentation\Http\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -30,5 +32,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('admin', function ($user) {
             return $user !== null && ($user->role ?? null) === 'admin';
         });
+
+        Gate::policy(UserModel::class, UserPolicy::class);
     }
 }

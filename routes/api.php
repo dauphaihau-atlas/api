@@ -4,13 +4,12 @@ use App\Exceptions\ServiceUnavailableException;
 use App\Presentation\Http\Controllers\Api\V1\AuthController;
 use App\Presentation\Http\Controllers\Api\V1\AvatarController;
 use App\Presentation\Http\Controllers\Api\V1\UserController;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
-
 
 /**
  * Health check
@@ -18,6 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Verifies connectivity to the database, Redis, and MinIO (when configured).
  *
  * @group Health
+ *
  * @unauthenticated
  *
  * @response 200 {"status":"healthy","checks":{"database":"ok","redis":"ok","minio":null}}
@@ -34,7 +34,7 @@ Route::get('health', function (): JsonResponse {
         DB::connection()->getPdo();
         DB::select('SELECT 1');
         $checks['database'] = 'ok';
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         $checks['database'] = 'error';
         $context = ['status' => 'unhealthy', 'checks' => $checks];
         if (config('app.debug')) {
@@ -46,7 +46,7 @@ Route::get('health', function (): JsonResponse {
     try {
         Redis::ping();
         $checks['redis'] = 'ok';
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         $checks['redis'] = 'error';
         $context = ['status' => 'unhealthy', 'checks' => $checks];
         if (config('app.debug')) {
@@ -60,7 +60,7 @@ Route::get('health', function (): JsonResponse {
         try {
             Storage::disk('minio')->files('/');
             $checks['minio'] = 'ok';
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $checks['minio'] = 'error';
             $context = ['status' => 'unhealthy', 'checks' => $checks];
             if (config('app.debug')) {
@@ -85,22 +85,25 @@ Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
         Route::get('me', [AuthController::class, 'me']);
         Route::post('me/avatar', [AvatarController::class, 'updateMe']);
 
-        // Admin-only routes
-        Route::middleware('can:admin')->group(function (): void {
+        // User management routes (authorized via UserPolicy)
+        Route::get('users', [UserController::class, 'index'])
+            ->middleware('authorize.user:viewAny');
+        Route::post('users', [UserController::class, 'store'])
+            ->middleware('authorize.user:create');
+
+        Route::middleware('authorize.user:import')->group(function (): void {
             Route::post('users/import', [UserController::class, 'import']);
             Route::get('users/import/{id}/status', [UserController::class, 'importStatus']);
+        });
+
+        Route::middleware('authorize.user:export')->group(function (): void {
             Route::get('users/export', [UserController::class, 'export']);
             Route::get('users/export/download', [UserController::class, 'downloadExport'])
                 ->middleware('signed')
-
-                // ->name('export.download') gives that route a named route in Laravel.
-                // What it does: Registers the name export.download for this route. You can refer to it by name instead of by URL.
-                // Why it’s used here: The export flow needs to build the download URL (e.g. for the signed link). The controller does that with:
-                //  URL::temporarySignedRoute('export.download', $expiresAt, ['path' => $response->path])
                 ->name('export.download');
-
-            Route::apiResource('users', UserController::class)->only(['index', 'store']);
-            Route::post('users/{user}/avatar', [AvatarController::class, 'updateUser']);
         });
+
+        Route::post('users/{user}/avatar', [AvatarController::class, 'updateUser'])
+            ->middleware('can:update,user');
     });
 });
