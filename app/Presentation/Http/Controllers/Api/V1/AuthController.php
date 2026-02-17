@@ -16,6 +16,7 @@ use App\Presentation\Http\Controllers\Controller;
 use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
 use App\Presentation\Http\Requests\LoginRequest;
 use App\Presentation\Http\Resources\UserResource;
+use App\Presentation\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -69,7 +70,7 @@ class AuthController extends Controller
             }
         }
 
-        return response()->json([
+        return ApiResponse::ok([
             'token' => $response->token,
             'user' => [
                 'id' => $response->id,
@@ -78,7 +79,7 @@ class AuthController extends Controller
                 'avatar_url' => $avatarUrl,
                 'created_at' => $response->createdAt->format('Y-m-d H:i:s'),
             ],
-        ], 200);
+        ]);
     }
 
     /**
@@ -108,10 +109,10 @@ class AuthController extends Controller
 
         $token = $this->authService->createToken($createResponse->id, 'api');
 
-        return response()->json([
+        return ApiResponse::created([
             'token' => $token,
             'user' => new UserResource($createResponse),
-        ], 201);
+        ]);
     }
 
     /**
@@ -129,7 +130,7 @@ class AuthController extends Controller
     {
         $this->logoutUserUseCase->execute();
 
-        return response()->json(null, 204);
+        return ApiResponse::noContent();
     }
 
     /**
@@ -155,6 +156,6 @@ class AuthController extends Controller
             throw new NotFoundException('User not found');
         }
 
-        return response()->json(new UserResource($user), 200);
+        return ApiResponse::ok(new UserResource($user));
     }
 }

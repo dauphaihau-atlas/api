@@ -18,6 +18,7 @@ use App\Presentation\Http\Controllers\Controller;
 use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
 use App\Presentation\Http\Requests\ImportUsersRequest as HttpImportUsersRequest;
 use App\Presentation\Http\Resources\UserResource;
+use App\Presentation\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -58,13 +59,10 @@ class UserController extends Controller
         $users = $this->userRepository->findPaginated($page, $perPage);
         $total = $this->userRepository->countAll();
 
-        return response()->json([
-            'data' => UserResource::collection($users),
-            'meta' => [
-                'total' => $total,
-                'per_page' => $perPage,
-                'current_page' => $page,
-            ],
+        return ApiResponse::ok(UserResource::collection($users), meta: [
+            'total' => $total,
+            'per_page' => $perPage,
+            'current_page' => $page,
         ]);
     }
 
@@ -94,7 +92,7 @@ class UserController extends Controller
 
         $response = $this->createUserUseCase->execute($useCaseRequest);
 
-        return response()->json(new UserResource($response), 201);
+        return ApiResponse::created(new UserResource($response));
     }
 
     /**
@@ -146,11 +144,10 @@ class UserController extends Controller
             throw new ValidationException($response->message ?? 'Import failed.');
         }
 
-        return response()->json([
+        return ApiResponse::accepted([
             'id' => $response->importId,
             'status' => $response->status,
-            'message' => 'Import started successfully.',
-        ], 202);
+        ], 'Import started successfully.');
     }
 
     /**
@@ -176,7 +173,7 @@ class UserController extends Controller
             throw new NotFoundException('Import not found.');
         }
 
-        return response()->json([
+        return ApiResponse::ok([
             'id' => $response->id,
             'status' => $response->status,
             'total_rows' => $response->totalRows,
@@ -189,7 +186,7 @@ class UserController extends Controller
                 : 0,
             'started_at' => $response->startedAt,
             'completed_at' => $response->completedAt,
-        ], 200);
+        ]);
     }
 
     /**
@@ -239,7 +236,7 @@ class UserController extends Controller
                 : $expiresAt->format('c');
         }
 
-        return response()->json($payload, 200);
+        return ApiResponse::ok($payload);
     }
 
     /**

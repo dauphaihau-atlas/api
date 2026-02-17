@@ -10,6 +10,7 @@ use App\Exceptions\ValidationException;
 use App\Presentation\Http\Controllers\Controller;
 use App\Presentation\Http\Requests\UploadAvatarRequest;
 use App\Presentation\Http\Resources\UserResource;
+use App\Presentation\Http\Responses\ApiResponse;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -111,6 +112,6 @@ class AvatarController extends Controller
 
         $user = $this->updateUserAvatarUseCase->execute($userId, $path);
 
-        return response()->json(new UserResource($user), 200);
+        return ApiResponse::ok(new UserResource($user));
     }
 }
