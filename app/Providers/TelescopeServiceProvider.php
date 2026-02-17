@@ -23,6 +23,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
                 return true;
             }
             $user = $request->user();
+
             return $user !== null && Gate::check('viewTelescope', [$user]);
         });
 
@@ -70,6 +71,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
             if (($user->role ?? null) === 'admin') {
                 return true;
             }
+
             return in_array($user->email, [
                 //
             ]);
