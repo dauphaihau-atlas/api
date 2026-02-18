@@ -25,7 +25,7 @@ class UserResource extends JsonResource
                 }
             }
 
-            return [
+            $data = [
                 'id' => $this->resource->getId(),
                 'name' => $this->resource->getName(),
                 'email' => $this->resource->getEmail()->getValue(),
@@ -33,6 +33,12 @@ class UserResource extends JsonResource
                 'role' => $this->resource->getRole(),
                 'created_at' => $this->resource->getCreatedAt()?->format('Y-m-d H:i:s'),
             ];
+
+            if ($this->resource->getDeletedAt() !== null) {
+                $data['deleted_at'] = $this->resource->getDeletedAt()->format('Y-m-d H:i:s');
+            }
+
+            return $data;
         }
 
         if ($this->resource instanceof CreateUserResponse) {

@@ -5,14 +5,20 @@ namespace App\Presentation\Http\Controllers\Api\V1;
 use App\Core\Application\DTOs\UserFilters;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserRequest;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserUseCase;
+use App\Core\Application\UseCases\User\DeleteUser\DeleteUserRequest;
+use App\Core\Application\UseCases\User\DeleteUser\DeleteUserUseCase;
 use App\Core\Application\UseCases\User\ExportUsers\ExportUsersRequest as ExportUsersUseCaseRequest;
 use App\Core\Application\UseCases\User\ExportUsers\ExportUsersUseCase;
+use App\Core\Application\UseCases\User\ForceDeleteUser\ForceDeleteUserRequest;
+use App\Core\Application\UseCases\User\ForceDeleteUser\ForceDeleteUserUseCase;
 use App\Core\Application\UseCases\User\GetImportStatus\GetImportStatusRequest as GetImportStatusUseCaseRequest;
 use App\Core\Application\UseCases\User\GetImportStatus\GetImportStatusUseCase;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersRequest as ImportUsersUseCaseRequest;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersUseCase;
 use App\Core\Application\UseCases\User\ListUsers\ListUsersRequest;
 use App\Core\Application\UseCases\User\ListUsers\ListUsersUseCase;
+use App\Core\Application\UseCases\User\RestoreUser\RestoreUserRequest;
+use App\Core\Application\UseCases\User\RestoreUser\RestoreUserUseCase;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ServiceUnavailableException;
 use App\Exceptions\ValidationException;
@@ -39,7 +45,10 @@ class UserController extends Controller
         private readonly ImportUsersUseCase $importUsersUseCase,
         private readonly GetImportStatusUseCase $getImportStatusUseCase,
         private readonly ExportUsersUseCase $exportUsersUseCase,
-        private readonly ListUsersUseCase $listUsersUseCase
+        private readonly ListUsersUseCase $listUsersUseCase,
+        private readonly DeleteUserUseCase $deleteUserUseCase,
+        private readonly RestoreUserUseCase $restoreUserUseCase,
+        private readonly ForceDeleteUserUseCase $forceDeleteUserUseCase
     ) {}
 
     /**
@@ -61,8 +70,14 @@ class UserController extends Controller
         $page = max(1, (int) $request->input('page', 1));
         $perPage = min(max(1, (int) $request->input('per_page', 15)), 100);
 
+        $trashedFilter = $request->input('trashed');
+        if ($trashedFilter !== null && ! in_array($trashedFilter, ['with', 'only'], true)) {
+            throw new ValidationException('Invalid trashed filter. Must be "with" or "only".');
+        }
+
         $filters = new UserFilters(
             search: $request->input('search') ?: null,
+            trashed: $trashedFilter,
         );
 
         $response = $this->listUsersUseCase->execute(new ListUsersRequest(
@@ -295,5 +310,74 @@ class UserController extends Controller
         return $adapter->download($path, $filename, [
             'Content-Type' => 'text/csv',
         ]);
+    }
+
+    /**
+     * Delete a user (soft delete)
+     *
+     * Soft-delete a user by setting deleted_at. Requires admin role.
+     *
+     * @group Users
+     *
+     * @authenticated
+     *
+     * @urlParam id integer required The user ID. Example: 1
+     *
+     * @response 200 {"data":null,"message":"User deleted successfully"}
+     * @response 404 {"message":"User not found"}
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $response = $this->deleteUserUseCase->execute(
+            new DeleteUserRequest($id)
+        );
+
+        return ApiResponse::ok(null, $response->message);
+    }
+
+    /**
+     * Restore a soft-deleted user
+     *
+     * Restore a previously soft-deleted user. Requires admin role.
+     *
+     * @group Users
+     *
+     * @authenticated
+     *
+     * @urlParam id integer required The user ID. Example: 1
+     *
+     * @response 200 {"data":{"id":1,"name":"John Doe","email":"john@example.com","avatar_url":null,"role":"user","created_at":"2025-01-01 00:00:00"},"message":"User restored successfully"}
+     * @response 404 {"message":"Trashed user not found"}
+     */
+    public function restore(int $id): JsonResponse
+    {
+        $response = $this->restoreUserUseCase->execute(
+            new RestoreUserRequest($id)
+        );
+
+        return ApiResponse::ok(new UserResource($response->user), $response->message);
+    }
+
+    /**
+     * Force delete a user (permanent)
+     *
+     * Permanently delete a user. Cannot be undone. Requires admin role.
+     *
+     * @group Users
+     *
+     * @authenticated
+     *
+     * @urlParam id integer required The user ID. Example: 1
+     *
+     * @response 200 {"data":null,"message":"User permanently deleted"}
+     * @response 404 {"message":"User not found"}
+     */
+    public function forceDestroy(int $id): JsonResponse
+    {
+        $response = $this->forceDeleteUserUseCase->execute(
+            new ForceDeleteUserRequest($id)
+        );
+
+        return ApiResponse::ok(null, $response->message);
     }
 }

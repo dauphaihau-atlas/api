@@ -105,6 +105,16 @@ Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
                 ->name('export.download');
         });
 
+        Route::delete('users/{id}', [UserController::class, 'destroy'])
+            ->middleware('authorize.user:delete')
+            ->where('id', '[0-9]+');
+        Route::post('users/{id}/restore', [UserController::class, 'restore'])
+            ->middleware('authorize.user:restore')
+            ->where('id', '[0-9]+');
+        Route::delete('users/{id}/force', [UserController::class, 'forceDestroy'])
+            ->middleware('authorize.user:forceDelete')
+            ->where('id', '[0-9]+');
+
         Route::post('users/{user}/avatar', [AvatarController::class, 'updateUser'])
             ->middleware('can:update,user');
 

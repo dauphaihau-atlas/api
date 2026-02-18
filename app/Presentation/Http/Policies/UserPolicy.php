@@ -28,7 +28,7 @@ class UserPolicy
         return $this->isAdmin($user) || $user->getKey() === $target->getKey();
     }
 
-    public function delete(UserModel $user, UserModel $target): bool
+    public function delete(UserModel $user): bool
     {
         return $this->isAdmin($user);
     }
@@ -39,6 +39,16 @@ class UserPolicy
     }
 
     public function export(UserModel $user): bool
+    {
+        return $this->isAdmin($user);
+    }
+
+    public function restore(UserModel $user): bool
+    {
+        return $this->isAdmin($user);
+    }
+
+    public function forceDelete(UserModel $user): bool
     {
         return $this->isAdmin($user);
     }
