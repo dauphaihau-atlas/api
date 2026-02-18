@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Infrastructure\Persistence\Eloquent\Observers\UserModelObserver;
+use App\Presentation\Http\Policies\ActivityLogPolicy;
 use App\Presentation\Http\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -43,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(UserModel::class, UserPolicy::class);
+        Gate::policy(ActivityLogModel::class, ActivityLogPolicy::class);
 
         UserModel::observe(UserModelObserver::class);
     }

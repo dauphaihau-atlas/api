@@ -4,6 +4,7 @@ use App\Core\Domain\Exceptions\InvalidEmailException;
 use App\Exceptions\ApiException;
 use App\Exceptions\ForbiddenException;
 use App\Exceptions\ValidationException;
+use App\Presentation\Http\Middleware\AuthorizeActivityLog;
 use App\Presentation\Http\Middleware\AuthorizeUser;
 use App\Presentation\Http\Middleware\LogApiRequests;
 use App\Presentation\Http\Middleware\RateLimitMiddleware;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'log.api' => LogApiRequests::class,
             'throttle.api' => RateLimitMiddleware::class,
             'authorize.user' => AuthorizeUser::class,
+            'authorize.activity_log' => AuthorizeActivityLog::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

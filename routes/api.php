@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\ServiceUnavailableException;
+use App\Presentation\Http\Controllers\Api\V1\ActivityLogController;
 use App\Presentation\Http\Controllers\Api\V1\AuthController;
 use App\Presentation\Http\Controllers\Api\V1\AvatarController;
 use App\Presentation\Http\Controllers\Api\V1\UserController;
@@ -106,5 +107,13 @@ Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
 
         Route::post('users/{user}/avatar', [AvatarController::class, 'updateUser'])
             ->middleware('can:update,user');
+
+        // Activity logs (admin only)
+        Route::get('activity-logs', [ActivityLogController::class, 'index'])
+            ->middleware('authorize.activity_log:viewAny');
+        Route::get('activity-logs/{id}', [ActivityLogController::class, 'show'])
+            ->middleware('authorize.activity_log:view,id');
+        Route::get('users/{user}/activity-logs', [ActivityLogController::class, 'indexForUser'])
+            ->middleware('authorize.activity_log:viewAny');
     });
 });
