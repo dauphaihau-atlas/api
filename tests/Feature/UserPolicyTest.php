@@ -106,24 +106,15 @@ class UserPolicyTest extends TestCase
     public function test_delete_allowed_for_admin(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $target = UserModel::factory()->create(['role' => 'user']);
 
-        $this->assertTrue($this->policy->delete($admin, $target));
+        $this->assertTrue($this->policy->delete($admin));
     }
 
-    public function test_delete_denied_for_owner(): void
+    public function test_delete_denied_for_regular_user(): void
     {
         $user = UserModel::factory()->create(['role' => 'user']);
 
-        $this->assertFalse($this->policy->delete($user, $user));
-    }
-
-    public function test_delete_denied_for_non_owner(): void
-    {
-        $user = UserModel::factory()->create(['role' => 'user']);
-        $other = UserModel::factory()->create(['role' => 'user']);
-
-        $this->assertFalse($this->policy->delete($user, $other));
+        $this->assertFalse($this->policy->delete($user));
     }
 
     // ── import ──
@@ -156,6 +147,38 @@ class UserPolicyTest extends TestCase
         $user = UserModel::factory()->create(['role' => 'user']);
 
         $this->assertFalse($this->policy->export($user));
+    }
+
+    // ── restore ──
+
+    public function test_restore_allowed_for_admin(): void
+    {
+        $admin = UserModel::factory()->admin()->create();
+
+        $this->assertTrue($this->policy->restore($admin));
+    }
+
+    public function test_restore_denied_for_regular_user(): void
+    {
+        $user = UserModel::factory()->create(['role' => 'user']);
+
+        $this->assertFalse($this->policy->restore($user));
+    }
+
+    // ── forceDelete ──
+
+    public function test_force_delete_allowed_for_admin(): void
+    {
+        $admin = UserModel::factory()->admin()->create();
+
+        $this->assertTrue($this->policy->forceDelete($admin));
+    }
+
+    public function test_force_delete_denied_for_regular_user(): void
+    {
+        $user = UserModel::factory()->create(['role' => 'user']);
+
+        $this->assertFalse($this->policy->forceDelete($user));
     }
 
     // ── Integration: routes enforce policy ──
