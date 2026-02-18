@@ -82,3 +82,4 @@ All extend `ApiException` base class.
 - **Cache**: Redis
 - **Storage**: Local or MinIO (S3-compatible) for avatars and imports
 - **Broadcasting**: Reverb WebSocket server
+- **Activity log**: Table `activity_log`; observers for `UserModel` record who changed what and when. Causer comes from `auth()` (nullable in queue/CLI). Bulk user import uses `DB::table()->upsert()` and does not emit per-row activity.
