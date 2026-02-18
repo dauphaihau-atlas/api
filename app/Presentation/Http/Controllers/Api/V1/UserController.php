@@ -2,7 +2,7 @@
 
 namespace App\Presentation\Http\Controllers\Api\V1;
 
-use App\Core\Application\Contracts\UserRepositoryInterface;
+use App\Core\Application\DTOs\UserFilters;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserRequest;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserUseCase;
 use App\Core\Application\UseCases\User\ExportUsers\ExportUsersRequest as ExportUsersUseCaseRequest;
@@ -11,6 +11,8 @@ use App\Core\Application\UseCases\User\GetImportStatus\GetImportStatusRequest as
 use App\Core\Application\UseCases\User\GetImportStatus\GetImportStatusUseCase;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersRequest as ImportUsersUseCaseRequest;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersUseCase;
+use App\Core\Application\UseCases\User\ListUsers\ListUsersRequest;
+use App\Core\Application\UseCases\User\ListUsers\ListUsersUseCase;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ServiceUnavailableException;
 use App\Exceptions\ValidationException;
@@ -37,7 +39,7 @@ class UserController extends Controller
         private readonly ImportUsersUseCase $importUsersUseCase,
         private readonly GetImportStatusUseCase $getImportStatusUseCase,
         private readonly ExportUsersUseCase $exportUsersUseCase,
-        private readonly UserRepositoryInterface $userRepository
+        private readonly ListUsersUseCase $listUsersUseCase
     ) {}
 
     /**
@@ -58,13 +60,21 @@ class UserController extends Controller
     {
         $page = max(1, (int) $request->input('page', 1));
         $perPage = min(max(1, (int) $request->input('per_page', 15)), 100);
-        $users = $this->userRepository->findPaginated($page, $perPage);
-        $total = $this->userRepository->countAll();
 
-        return ApiResponse::ok(UserResource::collection($users), meta: [
-            'total' => $total,
-            'per_page' => $perPage,
-            'current_page' => $page,
+        $filters = new UserFilters(
+            search: $request->input('search') ?: null,
+        );
+
+        $response = $this->listUsersUseCase->execute(new ListUsersRequest(
+            page: $page,
+            perPage: $perPage,
+            filters: $filters,
+        ));
+
+        return ApiResponse::ok(UserResource::collection($response->users), meta: [
+            'total' => $response->total,
+            'per_page' => $response->perPage,
+            'current_page' => $response->currentPage,
         ]);
     }
 

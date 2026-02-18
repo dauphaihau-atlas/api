@@ -3,9 +3,11 @@
 namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
 use App\Core\Application\Contracts\UserRepositoryInterface;
+use App\Core\Application\DTOs\UserFilters;
 use App\Core\Domain\Entities\User;
 use App\Core\Domain\ValueObjects\Email;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class EloquentUserRepository implements UserRepositoryInterface
@@ -63,12 +65,20 @@ class EloquentUserRepository implements UserRepositoryInterface
     /**
      * @return User[]
      */
-    public function findPaginated(int $page, int $perPage): array
+    public function findPaginated(UserFilters $filters, int $page, int $perPage): array
     {
         $perPage = max(1, min($perPage, 100));
         $offset = max(0, ($page - 1) * $perPage);
 
-        return UserModel::orderBy('id')
+        $query = $this->applyFilters(UserModel::query(), $filters);
+
+        $sortColumn = $filters->sort !== '' && str_starts_with($filters->sort, '-')
+            ? substr($filters->sort, 1)
+            : $filters->sort;
+        $sortColumn = $this->validateSortColumn($sortColumn);
+        $sortDir = str_starts_with($filters->sort, '-') ? 'desc' : 'asc';
+
+        return $query->orderBy($sortColumn, $sortDir)
             ->offset($offset)
             ->limit($perPage)
             ->get()
@@ -77,9 +87,59 @@ class EloquentUserRepository implements UserRepositoryInterface
             ->all();
     }
 
-    public function countAll(): int
+    public function count(UserFilters $filters): int
     {
-        return UserModel::count();
+        return $this->applyFilters(UserModel::query(), $filters)->count();
+    }
+
+    private function applyFilters(Builder $query, UserFilters $filters): Builder
+    {
+        if ($filters->search !== null && $filters->search !== '') {
+            $search = $filters->search;
+
+            if (DB::connection()->getDriverName() === 'pgsql') {
+                $tsquery = $this->buildPrefixTsquery($search);
+                $query->whereRaw(
+                    "to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(email, '')) @@ to_tsquery('simple', ?)",
+                    [$tsquery]
+                );
+            } else {
+                $like = '%'.$search.'%';
+                $query->where(function (Builder $q) use ($like): void {
+                    $q->where('name', 'LIKE', $like)
+                        ->orWhere('email', 'LIKE', $like);
+                });
+            }
+        }
+
+        return $query;
+    }
+
+    /**
+     * Build a tsquery string with prefix matching from user input.
+     *
+     * Splits input into words, sanitizes each, appends :* for prefix matching,
+     * and joins with & (AND). E.g. "john doe" becomes "john:* & doe:*".
+     */
+    private function buildPrefixTsquery(string $input): string
+    {
+        $terms = preg_split('/\s+/', trim($input), -1, PREG_SPLIT_NO_EMPTY);
+        if ($terms === false || $terms === []) {
+            return '';
+        }
+
+        return implode(' & ', array_map(function (string $term): string {
+            $sanitized = preg_replace('/[^\w@.\-]/', '', $term);
+
+            return $sanitized.':*';
+        }, $terms));
+    }
+
+    private function validateSortColumn(string $column): string
+    {
+        $allowed = ['id', 'name', 'email', 'role', 'created_at', 'updated_at'];
+
+        return in_array($column, $allowed, true) ? $column : 'id';
     }
 
     public function upsertBatch(array $usersData): array

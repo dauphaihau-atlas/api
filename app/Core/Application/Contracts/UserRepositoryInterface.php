@@ -2,6 +2,7 @@
 
 namespace App\Core\Application\Contracts;
 
+use App\Core\Application\DTOs\UserFilters;
 use App\Core\Domain\Entities\User;
 
 interface UserRepositoryInterface
@@ -22,9 +23,9 @@ interface UserRepositoryInterface
     /**
      * @return User[]
      */
-    public function findPaginated(int $page, int $perPage): array;
+    public function findPaginated(UserFilters $filters, int $page, int $perPage): array;
 
-    public function countAll(): int;
+    public function count(UserFilters $filters): int;
 
     /**
      * Bulk upsert users (insert new, update existing by email).
