@@ -41,38 +41,9 @@ class ActivityLogController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $page = max(1, (int) $request->input('page', 1));
-        $perPage = min(max(1, (int) $request->input('per_page', 15)), 100);
-
-        $event = $request->input('event');
-        if ($event !== null && $event !== '' && ! in_array($event, self::ALLOWED_EVENTS, true)) {
-            throw new ValidationException(
-                'Invalid event. Allowed: '.implode(', ', self::ALLOWED_EVENTS),
-                'INVALID_EVENT'
-            );
-        }
-
-        $sort = $request->input('sort', '-created_at');
-        if ($sort !== null && $sort !== '') {
-            $sortColumn = str_starts_with($sort, '-') ? substr($sort, 1) : $sort;
-            if (! in_array($sortColumn, self::SORT_ALLOWED, true)) {
-                throw new ValidationException(
-                    'Invalid sort. Allowed columns: '.implode(', ', self::SORT_ALLOWED),
-                    'INVALID_SORT'
-                );
-            }
-        } else {
-            $sort = '-created_at';
-        }
-
-        $fromDate = $request->input('from_date');
-        $toDate = $request->input('to_date');
-        if ($fromDate !== null && $fromDate !== '' && ! $this->isValidDate($fromDate)) {
-            throw new ValidationException('Invalid from_date format.', 'INVALID_FROM_DATE');
-        }
-        if ($toDate !== null && $toDate !== '' && ! $this->isValidDate($toDate)) {
-            throw new ValidationException('Invalid to_date format.', 'INVALID_TO_DATE');
-        }
+        $event = $this->validatedEvent($request);
+        $sort = $this->validatedSort($request);
+        [$fromDate, $toDate] = $this->validatedDateRange($request);
 
         $subjectId = $request->input('subject_id');
         $subjectIdInt = null;
@@ -94,31 +65,16 @@ class ActivityLogController extends Controller
 
         $filters = new ActivityLogFilters(
             search: $request->input('search') ?: null,
-            event: $event ?: null,
+            event: $event,
             subjectType: $request->input('subject_type') ?: null,
             subjectId: $subjectIdInt,
             causerId: $causerIdInt,
-            fromDate: $fromDate ?: null,
-            toDate: $toDate ?: null,
+            fromDate: $fromDate,
+            toDate: $toDate,
             sort: $sort,
         );
 
-        $listRequest = new ListActivityLogsRequest(
-            page: $page,
-            perPage: $perPage,
-            filters: $filters,
-        );
-
-        $response = $this->listActivityLogsUseCase->execute($listRequest);
-
-        return ApiResponse::ok(
-            ActivityLogResource::collection($response->entries),
-            meta: [
-                'total' => $response->total,
-                'per_page' => $response->perPage,
-                'current_page' => $response->currentPage,
-            ]
-        );
+        return $this->executeList($request, $filters);
     }
 
     /**
@@ -153,9 +109,47 @@ class ActivityLogController extends Controller
      */
     public function indexForUser(Request $request, UserModel $user): JsonResponse
     {
+        $event = $this->validatedEvent($request);
+        $sort = $this->validatedSort($request);
+        [$fromDate, $toDate] = $this->validatedDateRange($request);
+
+        $filters = new ActivityLogFilters(
+            search: $request->input('search') ?: null,
+            event: $event,
+            subjectType: UserModel::class,
+            subjectId: $user->getKey(),
+            causerId: null,
+            fromDate: $fromDate,
+            toDate: $toDate,
+            sort: $sort,
+        );
+
+        return $this->executeList($request, $filters);
+    }
+
+    private function executeList(Request $request, ActivityLogFilters $filters): JsonResponse
+    {
         $page = max(1, (int) $request->input('page', 1));
         $perPage = min(max(1, (int) $request->input('per_page', 15)), 100);
 
+        $response = $this->listActivityLogsUseCase->execute(new ListActivityLogsRequest(
+            page: $page,
+            perPage: $perPage,
+            filters: $filters,
+        ));
+
+        return ApiResponse::ok(
+            ActivityLogResource::collection($response->entries),
+            meta: [
+                'total' => $response->total,
+                'per_page' => $response->perPage,
+                'current_page' => $response->currentPage,
+            ]
+        );
+    }
+
+    private function validatedEvent(Request $request): ?string
+    {
         $event = $request->input('event');
         if ($event !== null && $event !== '' && ! in_array($event, self::ALLOWED_EVENTS, true)) {
             throw new ValidationException(
@@ -164,6 +158,11 @@ class ActivityLogController extends Controller
             );
         }
 
+        return $event ?: null;
+    }
+
+    private function validatedSort(Request $request): string
+    {
         $sort = $request->input('sort', '-created_at');
         if ($sort !== null && $sort !== '') {
             $sortColumn = str_starts_with($sort, '-') ? substr($sort, 1) : $sort;
@@ -177,6 +176,14 @@ class ActivityLogController extends Controller
             $sort = '-created_at';
         }
 
+        return $sort;
+    }
+
+    /**
+     * @return array{?string, ?string}
+     */
+    private function validatedDateRange(Request $request): array
+    {
         $fromDate = $request->input('from_date');
         $toDate = $request->input('to_date');
         if ($fromDate !== null && $fromDate !== '' && ! $this->isValidDate($fromDate)) {
@@ -186,33 +193,7 @@ class ActivityLogController extends Controller
             throw new ValidationException('Invalid to_date format.', 'INVALID_TO_DATE');
         }
 
-        $filters = new ActivityLogFilters(
-            search: $request->input('search') ?: null,
-            event: $event ?: null,
-            subjectType: UserModel::class,
-            subjectId: $user->getKey(),
-            causerId: null,
-            fromDate: $fromDate ?: null,
-            toDate: $toDate ?: null,
-            sort: $sort,
-        );
-
-        $listRequest = new ListActivityLogsRequest(
-            page: $page,
-            perPage: $perPage,
-            filters: $filters,
-        );
-
-        $response = $this->listActivityLogsUseCase->execute($listRequest);
-
-        return ApiResponse::ok(
-            ActivityLogResource::collection($response->entries),
-            meta: [
-                'total' => $response->total,
-                'per_page' => $response->perPage,
-                'current_page' => $response->currentPage,
-            ]
-        );
+        return [$fromDate ?: null, $toDate ?: null];
     }
 
     private function isValidDate(string $value): bool
