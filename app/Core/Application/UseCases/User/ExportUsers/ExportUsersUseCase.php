@@ -5,6 +5,7 @@ namespace App\Core\Application\UseCases\User\ExportUsers;
 use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Domain\Entities\User;
 use DateTimeImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -67,6 +68,12 @@ class ExportUsersUseCase
             'has_signed_url' => $url !== null,
             'expires_at' => $expiresAt?->format('c'),
         ]);
+
+        Cache::put("exports:users:last:{$request->adminId}", [
+            'path' => $path,
+            'url' => $url,
+            'expires_at' => $expiresAt?->format('c'),
+        ], self::TEMPORARY_URL_EXPIRY_MINUTES * 60);
 
         return new ExportUsersResponse($path, $url, $expiresAt);
     }

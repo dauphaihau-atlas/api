@@ -39,7 +39,7 @@ class ExportUsersUseCaseTest extends TestCase
             'role' => 'admin',
         ]);
 
-        $response = $this->useCase->execute(new ExportUsersRequest);
+        $response = $this->useCase->execute(new ExportUsersRequest(adminId: 1));
 
         $this->assertStringStartsWith('exports/users-', $response->path);
         $this->assertStringEndsWith('.csv', $response->path);
@@ -64,7 +64,7 @@ class ExportUsersUseCaseTest extends TestCase
      */
     public function test_execute_writes_header_only_when_no_users(): void
     {
-        $response = $this->useCase->execute(new ExportUsersRequest);
+        $response = $this->useCase->execute(new ExportUsersRequest(adminId: 1));
 
         $this->assertStringStartsWith('exports/users-', $response->path);
         $disk = Storage::disk(config('filesystems.exports_disk', 'local'));
@@ -80,7 +80,7 @@ class ExportUsersUseCaseTest extends TestCase
      */
     public function test_execute_returns_null_url_and_expires_at_for_local_disk(): void
     {
-        $response = $this->useCase->execute(new ExportUsersRequest);
+        $response = $this->useCase->execute(new ExportUsersRequest(adminId: 1));
         $this->assertNull($response->url);
         $this->assertNull($response->expiresAt);
         $this->assertNotEmpty($response->path);
@@ -97,7 +97,7 @@ class ExportUsersUseCaseTest extends TestCase
             'role' => 'user',
         ]);
 
-        $response = $this->useCase->execute(new ExportUsersRequest);
+        $response = $this->useCase->execute(new ExportUsersRequest(adminId: 1));
         $content = Storage::disk(config('filesystems.exports_disk', 'local'))->get($response->path);
         $this->assertStringContainsString('"Doe, Jane"', $content);
     }

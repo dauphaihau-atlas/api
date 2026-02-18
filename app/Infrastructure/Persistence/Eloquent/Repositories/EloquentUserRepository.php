@@ -113,6 +113,21 @@ class EloquentUserRepository implements UserRepositoryInterface
         return $this->applyFilters(UserModel::query(), $filters)->count();
     }
 
+    public function countActive(): int
+    {
+        return UserModel::count();
+    }
+
+    public function countTrashed(): int
+    {
+        return UserModel::onlyTrashed()->count();
+    }
+
+    public function countCreatedToday(): int
+    {
+        return UserModel::whereDate('created_at', today())->count();
+    }
+
     private function applyFilters(Builder $query, UserFilters $filters): Builder
     {
         if ($filters->trashed === 'with') {

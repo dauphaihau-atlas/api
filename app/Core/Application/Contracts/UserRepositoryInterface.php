@@ -33,6 +33,12 @@ interface UserRepositoryInterface
 
     public function count(UserFilters $filters): int;
 
+    public function countActive(): int;
+
+    public function countTrashed(): int;
+
+    public function countCreatedToday(): int;
+
     /**
      * Bulk upsert users (insert new, update existing by email).
      *

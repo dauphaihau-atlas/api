@@ -7,6 +7,7 @@ namespace App\Infrastructure\Persistence\Eloquent\Observers;
 use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class UserModelObserver
 {
@@ -19,6 +20,7 @@ class UserModelObserver
 
     public function created(UserModel $model): void
     {
+        Cache::tags(['users'])->flush();
         $this->log('created', $model, $this->safeSnapshot($model));
     }
 
@@ -33,16 +35,19 @@ class UserModelObserver
 
     public function deleted(UserModel $model): void
     {
+        Cache::tags(['users'])->flush();
         $this->log('deleted', $model, null);
     }
 
     public function restored(UserModel $model): void
     {
+        Cache::tags(['users'])->flush();
         $this->log('restored', $model, $this->safeSnapshot($model));
     }
 
     public function forceDeleted(UserModel $model): void
     {
+        Cache::tags(['users'])->flush();
         $this->log('force_deleted', $model, null);
     }
 
