@@ -15,6 +15,12 @@ interface UserRepositoryInterface
 
     public function delete(int $id): bool;
 
+    public function restore(int $id): bool;
+
+    public function forceDelete(int $id): bool;
+
+    public function findTrashedById(int $id): ?User;
+
     /**
      * @return User[]
      */

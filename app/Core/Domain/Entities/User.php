@@ -15,7 +15,8 @@ class User
         private ?string $avatarPath = null,
         private ?string $role = null,
         private ?DateTimeImmutable $createdAt = null,
-        private ?DateTimeImmutable $updatedAt = null
+        private ?DateTimeImmutable $updatedAt = null,
+        private ?DateTimeImmutable $deletedAt = null
     ) {
         $this->createdAt = $createdAt ?? new DateTimeImmutable;
         $this->updatedAt = $updatedAt ?? new DateTimeImmutable;
@@ -59,6 +60,11 @@ class User
     public function getRole(): ?string
     {
         return $this->role;
+    }
+
+    public function getDeletedAt(): ?DateTimeImmutable
+    {
+        return $this->deletedAt;
     }
 
     public function updateAvatarPath(?string $path): void

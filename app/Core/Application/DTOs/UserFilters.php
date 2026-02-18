@@ -9,5 +9,6 @@ final readonly class UserFilters
     public function __construct(
         public ?string $search = null,
         public string $sort = 'id',
+        public ?string $trashed = null,
     ) {}
 }
