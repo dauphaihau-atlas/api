@@ -1,0 +1,107 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Persistence\Eloquent\Observers;
+
+use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
+use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use Illuminate\Support\Facades\Auth;
+
+class UserModelObserver
+{
+    private const LOG_NAME = 'default';
+
+    /**
+     * Attributes that must never be stored in activity log properties.
+     */
+    private const SENSITIVE_ATTRIBUTES = ['password', 'remember_token'];
+
+    public function created(UserModel $model): void
+    {
+        $this->log('created', $model, $this->safeSnapshot($model));
+    }
+
+    public function updated(UserModel $model): void
+    {
+        $changes = $this->getSafeChanges($model);
+        if ($changes === []) {
+            return;
+        }
+        $this->log('updated', $model, $changes);
+    }
+
+    public function deleted(UserModel $model): void
+    {
+        $this->log('deleted', $model, null);
+    }
+
+    private function log(string $event, UserModel $model, ?array $properties): void
+    {
+        $causer = Auth::user();
+
+        ActivityLogModel::create([
+            'log_name' => self::LOG_NAME,
+            'event' => $event,
+            'subject_type' => $model->getMorphClass(),
+            'subject_id' => $model->getKey(),
+            'causer_type' => $causer !== null ? $causer->getMorphClass() : null,
+            'causer_id' => $causer?->getAuthIdentifier(),
+            'properties' => $properties,
+        ]);
+    }
+
+    /**
+     * Safe snapshot for created/deleted: only non-sensitive attributes.
+     *
+     * @return array<string, mixed>
+     */
+    private function safeSnapshot(UserModel $model): array
+    {
+        $attrs = [];
+        foreach (['name', 'email', 'role', 'avatar_path'] as $key) {
+            if (array_key_exists($key, $model->getAttributes())) {
+                $attrs[$key] = $model->getAttribute($key);
+            }
+        }
+
+        return $attrs;
+    }
+
+    /**
+     * For updated: old and new values for changed attributes only, excluding sensitive ones.
+     *
+     * @return array{old?: array<string, mixed>, new?: array<string, mixed>}|array{}
+     */
+    private function getSafeChanges(UserModel $model): array
+    {
+        $changes = $model->getChanges();
+        $filtered = $this->filterSensitive($changes);
+        if ($filtered === []) {
+            return [];
+        }
+
+        $old = [];
+        $new = [];
+        foreach (array_keys($filtered) as $key) {
+            $old[$key] = $model->getOriginal($key);
+            $new[$key] = $model->getAttribute($key);
+        }
+
+        return ['old' => $old, 'new' => $new];
+    }
+
+    /**
+     * @param  array<string, mixed>  $attrs
+     * @return array<string, mixed>
+     */
+    private function filterSensitive(array $attrs): array
+    {
+        foreach (self::SENSITIVE_ATTRIBUTES as $sensitive) {
+            unset($attrs[$sensitive]);
+        }
+        unset($attrs['updated_at']);
+
+        return $attrs;
+    }
+}
