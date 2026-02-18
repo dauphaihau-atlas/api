@@ -51,6 +51,27 @@ class EloquentUserRepository implements UserRepositoryInterface
         return UserModel::destroy($id) > 0;
     }
 
+    public function restore(int $id): bool
+    {
+        $model = UserModel::onlyTrashed()->find($id);
+
+        return $model !== null && $model->restore();
+    }
+
+    public function forceDelete(int $id): bool
+    {
+        $model = UserModel::withTrashed()->find($id);
+
+        return $model !== null && $model->forceDelete();
+    }
+
+    public function findTrashedById(int $id): ?User
+    {
+        $model = UserModel::onlyTrashed()->find($id);
+
+        return $model !== null ? $this->toEntity($model) : null;
+    }
+
     /**
      * @return User[]
      */
@@ -94,6 +115,12 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     private function applyFilters(Builder $query, UserFilters $filters): Builder
     {
+        if ($filters->trashed === 'with') {
+            $query->withTrashed();
+        } elseif ($filters->trashed === 'only') {
+            $query->onlyTrashed();
+        }
+
         if ($filters->search !== null && $filters->search !== '') {
             $search = $filters->search;
 
@@ -137,7 +164,7 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     private function validateSortColumn(string $column): string
     {
-        $allowed = ['id', 'name', 'email', 'role', 'created_at', 'updated_at'];
+        $allowed = ['id', 'name', 'email', 'role', 'created_at', 'updated_at', 'deleted_at'];
 
         return in_array($column, $allowed, true) ? $column : 'id';
     }
@@ -167,7 +194,8 @@ class EloquentUserRepository implements UserRepositoryInterface
             avatarPath: $model->avatar_path,
             role: $model->role ?? null,
             createdAt: $model->created_at?->toDateTimeImmutable(),
-            updatedAt: $model->updated_at?->toDateTimeImmutable()
+            updatedAt: $model->updated_at?->toDateTimeImmutable(),
+            deletedAt: $model->deleted_at?->toDateTimeImmutable()
         );
     }
 }

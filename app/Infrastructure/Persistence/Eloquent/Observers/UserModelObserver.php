@@ -36,6 +36,16 @@ class UserModelObserver
         $this->log('deleted', $model, null);
     }
 
+    public function restored(UserModel $model): void
+    {
+        $this->log('restored', $model, $this->safeSnapshot($model));
+    }
+
+    public function forceDeleted(UserModel $model): void
+    {
+        $this->log('force_deleted', $model, null);
+    }
+
     private function log(string $event, UserModel $model, ?array $properties): void
     {
         $causer = Auth::user();
