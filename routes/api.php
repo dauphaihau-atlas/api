@@ -1,10 +1,6 @@
 <?php
 
 use App\Exceptions\ServiceUnavailableException;
-use App\Presentation\Http\Controllers\Api\V1\ActivityLogController;
-use App\Presentation\Http\Controllers\Api\V1\AuthController;
-use App\Presentation\Http\Controllers\Api\V1\AvatarController;
-use App\Presentation\Http\Controllers\Api\V1\UserController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -78,52 +74,5 @@ Route::get('health', function (): JsonResponse {
 });
 
 Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
-    Route::post('login', [AuthController::class, 'login'])
-        ->middleware('throttle.api:login');
-    Route::post('register', [AuthController::class, 'register']);
-
-    Route::middleware('auth:sanctum')->group(function (): void {
-        Route::post('logout', [AuthController::class, 'logout']);
-        Route::get('me', [AuthController::class, 'me']);
-        Route::post('me/avatar', [AvatarController::class, 'updateMe']);
-
-        // User management routes (authorized via UserPolicy)
-        Route::get('users', [UserController::class, 'index'])
-            ->middleware('authorize.user:viewAny');
-        Route::post('users', [UserController::class, 'store'])
-            ->middleware('authorize.user:create');
-
-        Route::middleware(['authorize.user:import', 'throttle.api:heavy'])->group(function (): void {
-            Route::post('users/import', [UserController::class, 'import']);
-            Route::get('users/import/{id}/status', [UserController::class, 'importStatus']);
-        });
-
-        Route::middleware(['authorize.user:export', 'throttle.api:heavy'])->group(function (): void {
-            Route::get('users/export', [UserController::class, 'export']);
-            Route::get('users/export/download', [UserController::class, 'downloadExport'])
-                ->middleware('signed')
-                ->name('export.download');
-        });
-
-        Route::delete('users/{id}', [UserController::class, 'destroy'])
-            ->middleware('authorize.user:delete')
-            ->where('id', '[0-9]+');
-        Route::post('users/{id}/restore', [UserController::class, 'restore'])
-            ->middleware('authorize.user:restore')
-            ->where('id', '[0-9]+');
-        Route::delete('users/{id}/force', [UserController::class, 'forceDestroy'])
-            ->middleware('authorize.user:forceDelete')
-            ->where('id', '[0-9]+');
-
-        Route::post('users/{user}/avatar', [AvatarController::class, 'updateUser'])
-            ->middleware('can:update,user');
-
-        // Activity logs (admin only)
-        Route::get('activity-logs', [ActivityLogController::class, 'index'])
-            ->middleware('authorize.activity_log:viewAny');
-        Route::get('activity-logs/{id}', [ActivityLogController::class, 'show'])
-            ->middleware('authorize.activity_log:view,id');
-        Route::get('users/{user}/activity-logs', [ActivityLogController::class, 'indexForUser'])
-            ->middleware('authorize.activity_log:viewAny');
-    });
+    require base_path('routes/api/v1.php');
 });
