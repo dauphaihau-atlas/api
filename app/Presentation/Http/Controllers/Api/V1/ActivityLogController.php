@@ -93,6 +93,7 @@ class ActivityLogController extends Controller
         }
 
         $filters = new ActivityLogFilters(
+            search: $request->input('search') ?: null,
             event: $event ?: null,
             subjectType: $request->input('subject_type') ?: null,
             subjectId: $subjectIdInt,
@@ -186,6 +187,7 @@ class ActivityLogController extends Controller
         }
 
         $filters = new ActivityLogFilters(
+            search: $request->input('search') ?: null,
             event: $event ?: null,
             subjectType: UserModel::class,
             subjectId: $user->getKey(),

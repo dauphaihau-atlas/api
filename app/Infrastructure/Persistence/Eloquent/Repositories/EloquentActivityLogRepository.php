@@ -10,6 +10,7 @@ use App\Core\Application\DTOs\ActivityLogFilters;
 use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use DateTimeInterface;
+use Illuminate\Support\Facades\DB;
 
 class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
 {
@@ -52,6 +53,41 @@ class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
 
     private function applyFilters(\Illuminate\Database\Eloquent\Builder $query, ActivityLogFilters $filters): \Illuminate\Database\Eloquent\Builder
     {
+        if ($filters->search !== null && $filters->search !== '') {
+            $search = $filters->search;
+
+            if (DB::connection()->getDriverName() === 'pgsql') {
+                $tsquery = $this->buildPrefixTsquery($search);
+                $query->where(function (\Illuminate\Database\Eloquent\Builder $q) use ($tsquery): void {
+                    $q->whereExists(function ($sub) use ($tsquery): void {
+                        $sub->select(DB::raw(1))
+                            ->from('users')
+                            ->whereColumn('users.id', 'activity_log.causer_id')
+                            ->whereRaw(
+                                "to_tsvector('simple', coalesce(users.name, '') || ' ' || coalesce(users.email, '')) @@ to_tsquery('simple', ?)",
+                                [$tsquery]
+                            );
+                    })->orWhereRaw(
+                        "to_tsvector('simple', coalesce(event, '')) @@ to_tsquery('simple', ?)",
+                        [$tsquery]
+                    );
+                });
+            } else {
+                $like = '%'.$search.'%';
+                $query->where(function (\Illuminate\Database\Eloquent\Builder $q) use ($like): void {
+                    $q->whereExists(function ($sub) use ($like): void {
+                        $sub->select(DB::raw(1))
+                            ->from('users')
+                            ->whereColumn('users.id', 'activity_log.causer_id')
+                            ->where(function ($userQ) use ($like): void {
+                                $userQ->where('users.name', 'LIKE', $like)
+                                    ->orWhere('users.email', 'LIKE', $like);
+                            });
+                    })->orWhere('event', 'LIKE', $like);
+                });
+            }
+        }
+
         if ($filters->event !== null && $filters->event !== '') {
             $query->where('event', $filters->event);
         }
@@ -72,6 +108,26 @@ class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
         }
 
         return $query;
+    }
+
+    /**
+     * Build a tsquery string with prefix matching from user input.
+     *
+     * Splits input into words, sanitizes each, appends :* for prefix matching,
+     * and joins with & (AND). E.g. "john doe" becomes "john:* & doe:*".
+     */
+    private function buildPrefixTsquery(string $input): string
+    {
+        $terms = preg_split('/\s+/', trim($input), -1, PREG_SPLIT_NO_EMPTY);
+        if ($terms === false || $terms === []) {
+            return '';
+        }
+
+        return implode(' & ', array_map(function (string $term): string {
+            $sanitized = preg_replace('/[^\w@.\-]/', '', $term);
+
+            return $sanitized.':*';
+        }, $terms));
     }
 
     private function validateSortColumn(string $column): string

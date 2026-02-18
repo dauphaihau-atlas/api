@@ -7,6 +7,7 @@ namespace App\Core\Application\DTOs;
 final readonly class ActivityLogFilters
 {
     public function __construct(
+        public ?string $search = null,
         public ?string $event = null,
         public ?string $subjectType = null,
         public ?int $subjectId = null,
