@@ -38,6 +38,11 @@ class UserPolicy
         return $this->isAdmin($user);
     }
 
+    public function cancelImport(UserModel $user): bool
+    {
+        return $this->isAdmin($user);
+    }
+
     public function export(UserModel $user): bool
     {
         return $this->isAdmin($user);

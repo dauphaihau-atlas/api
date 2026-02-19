@@ -114,6 +114,13 @@ class UserImport
         $this->updatedAt = new DateTimeImmutable;
     }
 
+    public function markAsCancelled(): void
+    {
+        $this->status = 'cancelled';
+        $this->completedAt = new DateTimeImmutable;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
     public function updateBatchId(string $batchId): void
     {
         $this->batchId = $batchId;

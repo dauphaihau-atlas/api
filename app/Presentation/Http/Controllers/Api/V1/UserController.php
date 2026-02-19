@@ -12,6 +12,8 @@ use App\Core\Application\UseCases\User\ExportUsers\ExportUsersUseCase;
 use App\Core\Application\UseCases\User\GetUserStats\GetUserStatsUseCase;
 use App\Core\Application\UseCases\User\ForceDeleteUser\ForceDeleteUserRequest;
 use App\Core\Application\UseCases\User\ForceDeleteUser\ForceDeleteUserUseCase;
+use App\Core\Application\UseCases\User\CancelImport\CancelImportRequest;
+use App\Core\Application\UseCases\User\CancelImport\CancelImportUseCase;
 use App\Core\Application\UseCases\User\GetImportStatus\GetImportStatusRequest as GetImportStatusUseCaseRequest;
 use App\Core\Application\UseCases\User\GetImportStatus\GetImportStatusUseCase;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersRequest as ImportUsersUseCaseRequest;
@@ -45,6 +47,7 @@ class UserController extends Controller
     public function __construct(
         private readonly CreateUserUseCase $createUserUseCase,
         private readonly ImportUsersUseCase $importUsersUseCase,
+        private readonly CancelImportUseCase $cancelImportUseCase,
         private readonly GetImportStatusUseCase $getImportStatusUseCase,
         private readonly ExportUsersUseCase $exportUsersUseCase,
         private readonly ListUsersUseCase $listUsersUseCase,
@@ -220,6 +223,28 @@ class UserController extends Controller
             'started_at' => $response->startedAt,
             'completed_at' => $response->completedAt,
         ]);
+    }
+
+    /**
+     * Cancel an import
+     *
+     * Cancel a pending or in-progress user import. Requires admin role.
+     *
+     * @group Users
+     *
+     * @authenticated
+     *
+     * @urlParam id integer required The import ID. Example: 1
+     *
+     * @response 200 {"data":{"id":1,"status":"cancelled"},"message":"Import cancelled."}
+     * @response 404 {"message":"Import not found."}
+     * @response 409 {"message":"Import already completed."}
+     */
+    public function cancelImport(int $id): JsonResponse
+    {
+        $response = $this->cancelImportUseCase->execute(new CancelImportRequest($id));
+
+        return ApiResponse::ok(['id' => $response->id, 'status' => $response->status], 'Import cancelled.');
     }
 
     /**

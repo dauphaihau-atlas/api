@@ -197,4 +197,116 @@ class UserImportApiTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    public function test_cancel_import_returns_200_when_processing(): void
+    {
+        $admin = UserModel::factory()->admin()->create();
+        $token = $admin->createToken('test')->plainTextToken;
+
+        $import = UserImportModel::create([
+            'batch_id' => 'test-batch-cancel',
+            'file_path' => 'imports/test.csv',
+            'status' => 'processing',
+            'total_rows' => 100,
+            'processed_rows' => 10,
+            'created_count' => 10,
+            'updated_count' => 0,
+            'errors' => [],
+            'started_at' => now(),
+        ]);
+
+        $response = $this->delete("/api/v1/users/import/{$import->id}", [], [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.status', 'cancelled');
+        $response->assertJsonPath('data.id', $import->id);
+        $this->assertDatabaseHas('user_imports', ['id' => $import->id, 'status' => 'cancelled']);
+    }
+
+    public function test_cancel_import_returns_200_when_pending(): void
+    {
+        $admin = UserModel::factory()->admin()->create();
+        $token = $admin->createToken('test')->plainTextToken;
+
+        $import = UserImportModel::create([
+            'batch_id' => 'test-batch-pending',
+            'file_path' => 'imports/test.csv',
+            'status' => 'pending',
+            'total_rows' => 50,
+            'processed_rows' => 0,
+            'created_count' => 0,
+            'updated_count' => 0,
+            'errors' => [],
+        ]);
+
+        $response = $this->delete("/api/v1/users/import/{$import->id}", [], [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.status', 'cancelled');
+        $this->assertDatabaseHas('user_imports', ['id' => $import->id, 'status' => 'cancelled']);
+    }
+
+    public function test_cancel_import_returns_404_for_nonexistent_import(): void
+    {
+        $admin = UserModel::factory()->admin()->create();
+        $token = $admin->createToken('test')->plainTextToken;
+
+        $response = $this->delete('/api/v1/users/import/999', [], [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(404);
+    }
+
+    public function test_cancel_import_returns_409_when_already_completed(): void
+    {
+        $admin = UserModel::factory()->admin()->create();
+        $token = $admin->createToken('test')->plainTextToken;
+
+        $import = UserImportModel::create([
+            'batch_id' => 'test-batch-done',
+            'file_path' => 'imports/test.csv',
+            'status' => 'completed',
+            'total_rows' => 10,
+            'processed_rows' => 10,
+            'created_count' => 10,
+            'updated_count' => 0,
+            'errors' => [],
+            'completed_at' => now(),
+        ]);
+
+        $response = $this->delete("/api/v1/users/import/{$import->id}", [], [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(409);
+    }
+
+    public function test_cancel_import_returns_401_when_unauthenticated(): void
+    {
+        $response = $this->deleteJson('/api/v1/users/import/1');
+
+        $response->assertStatus(401);
+    }
+
+    public function test_cancel_import_returns_403_when_non_admin(): void
+    {
+        $user = UserModel::factory()->create(['role' => 'user']);
+        $token = $user->createToken('test')->plainTextToken;
+
+        $response = $this->delete('/api/v1/users/import/1', [], [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(403);
+    }
 }
