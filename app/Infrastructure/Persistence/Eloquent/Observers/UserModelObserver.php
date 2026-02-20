@@ -21,6 +21,7 @@ class UserModelObserver
     public function created(UserModel $model): void
     {
         Cache::tags(['users'])->flush();
+        Cache::increment('version:users');
         $this->log('created', $model, $this->safeSnapshot($model));
     }
 
@@ -30,24 +31,28 @@ class UserModelObserver
         if ($changes === []) {
             return;
         }
+        Cache::increment('version:users');
         $this->log('updated', $model, $changes);
     }
 
     public function deleted(UserModel $model): void
     {
         Cache::tags(['users'])->flush();
+        Cache::increment('version:users');
         $this->log('deleted', $model, null);
     }
 
     public function restored(UserModel $model): void
     {
         Cache::tags(['users'])->flush();
+        Cache::increment('version:users');
         $this->log('restored', $model, $this->safeSnapshot($model));
     }
 
     public function forceDeleted(UserModel $model): void
     {
         Cache::tags(['users'])->flush();
+        Cache::increment('version:users');
         $this->log('force_deleted', $model, null);
     }
 
@@ -64,6 +69,7 @@ class UserModelObserver
             'causer_id' => $causer?->getAuthIdentifier(),
             'properties' => $properties,
         ]);
+        Cache::increment('version:activity-logs');
     }
 
     /**

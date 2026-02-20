@@ -81,6 +81,7 @@ class ProcessImportChunk implements ShouldQueue
                 $updated = $result['updated'];
             });
             Cache::tags(['users'])->flush();
+            Cache::increment('version:users');
         }
 
         $importRepository->addChunkResult(
