@@ -6,6 +6,7 @@ use App\Exceptions\ForbiddenException;
 use App\Exceptions\ValidationException;
 use App\Presentation\Http\Middleware\AuthorizeActivityLog;
 use App\Presentation\Http\Middleware\AuthorizeUser;
+use App\Presentation\Http\Middleware\CacheControlMiddleware;
 use App\Presentation\Http\Middleware\LogApiRequests;
 use App\Presentation\Http\Middleware\RateLimitMiddleware;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -33,9 +34,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->appendToGroup('api', LogApiRequests::class);
+        $middleware->appendToGroup('api', CacheControlMiddleware::class);
 
         $middleware->alias([
             'log.api' => LogApiRequests::class,
+            'cache.control' => CacheControlMiddleware::class,
             'throttle.api' => RateLimitMiddleware::class,
             'authorize.user' => AuthorizeUser::class,
             'authorize.activity_log' => AuthorizeActivityLog::class,
