@@ -8,6 +8,7 @@ use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class UserModelObserverTest extends TestCase
@@ -120,5 +121,86 @@ class UserModelObserverTest extends TestCase
         $this->assertNotNull($createdLog);
         $this->assertNull($createdLog->causer_id);
         $this->assertNull($createdLog->causer_type);
+    }
+
+    // -------------------------------------------------------------------------
+    // Version token increments
+    // -------------------------------------------------------------------------
+
+    public function test_created_increments_version_users_and_activity_logs(): void
+    {
+        Cache::put('version:users', 0);
+        Cache::put('version:activity-logs', 0);
+
+        UserModel::factory()->create();
+
+        $this->assertSame(1, Cache::get('version:users'));
+        $this->assertSame(1, Cache::get('version:activity-logs'));
+    }
+
+    public function test_updated_with_changes_increments_version_users_and_activity_logs(): void
+    {
+        $user = UserModel::factory()->create(['name' => 'Before']);
+        Cache::put('version:users', 0);
+        Cache::put('version:activity-logs', 0);
+
+        $user->name = 'After';
+        $user->save();
+
+        $this->assertSame(1, Cache::get('version:users'));
+        $this->assertSame(1, Cache::get('version:activity-logs'));
+    }
+
+    public function test_updated_without_meaningful_changes_does_not_increment_versions(): void
+    {
+        $user = UserModel::factory()->create();
+        Cache::put('version:users', 0);
+        Cache::put('version:activity-logs', 0);
+
+        // touch() only updates updated_at which is filtered out — no meaningful change
+        $user->touch();
+
+        $this->assertSame(0, Cache::get('version:users'));
+        $this->assertSame(0, Cache::get('version:activity-logs'));
+    }
+
+    public function test_deleted_increments_version_users_and_activity_logs(): void
+    {
+        $user = UserModel::factory()->create();
+        Cache::put('version:users', 0);
+        Cache::put('version:activity-logs', 0);
+
+        $user->delete();
+
+        $this->assertSame(1, Cache::get('version:users'));
+        $this->assertSame(1, Cache::get('version:activity-logs'));
+    }
+
+    public function test_restored_increments_version_users_and_activity_logs(): void
+    {
+        $user = UserModel::factory()->create();
+        $user->delete();
+        Cache::put('version:users', 0);
+        Cache::put('version:activity-logs', 0);
+
+        UserModel::withTrashed()->find($user->id)->restore();
+
+        // restore() fires both `updated` (deleted_at → null) and `restored` → 2 increments each
+        $this->assertSame(2, Cache::get('version:users'));
+        $this->assertSame(2, Cache::get('version:activity-logs'));
+    }
+
+    public function test_force_deleted_increments_version_users_and_activity_logs(): void
+    {
+        $user = UserModel::factory()->create();
+        $user->delete();
+        Cache::put('version:users', 0);
+        Cache::put('version:activity-logs', 0);
+
+        UserModel::withTrashed()->find($user->id)->forceDelete();
+
+        // forceDelete() fires both `deleted` and `forceDeleted` → 2 increments each
+        $this->assertSame(2, Cache::get('version:users'));
+        $this->assertSame(2, Cache::get('version:activity-logs'));
     }
 }
