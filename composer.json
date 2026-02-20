@@ -45,6 +45,7 @@
             "@php artisan key:generate",
             "@php artisan migrate --force"
         ],
+        "dev:infra": "docker compose up -d",
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "php artisan serve & php artisan horizon & php artisan pail --timeout=0 & php artisan reverb:start & trap 'kill 0' EXIT; wait"
