@@ -9,6 +9,7 @@ use App\Presentation\Http\Middleware\AuthorizeUser;
 use App\Presentation\Http\Middleware\CacheControlMiddleware;
 use App\Presentation\Http\Middleware\LogApiRequests;
 use App\Presentation\Http\Middleware\RateLimitMiddleware;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -33,6 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ['prefix' => 'api/v1', 'middleware' => ['api', 'auth:sanctum']],
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->statefulApi();
+
         $middleware->appendToGroup('api', LogApiRequests::class);
         $middleware->appendToGroup('api', CacheControlMiddleware::class);
 
@@ -61,6 +64,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
 
                 return response()->json($payload, $e->getHttpStatusCode());
+            }
+
+            // Sanctum/auth:sanctum throws AuthenticationException (not ApiException)
+            if ($e instanceof AuthenticationException) {
+                return response()->json(['message' => $e->getMessage() ?: 'Unauthenticated.'], 401);
             }
 
             // Domain exception: InvalidEmailException maps to 422
