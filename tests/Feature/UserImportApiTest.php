@@ -36,7 +36,7 @@ class UserImportApiTest extends TestCase
 
     public function test_users_import_returns_403_when_authenticated_as_non_admin(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
         $csv = "name,email,password\nAlice,alice@example.com,password123";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
@@ -187,7 +187,7 @@ class UserImportApiTest extends TestCase
 
     public function test_import_status_returns_403_when_non_admin(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->get('/api/v1/users/import/1/status', [
@@ -299,7 +299,7 @@ class UserImportApiTest extends TestCase
 
     public function test_cancel_import_returns_403_when_non_admin(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->delete('/api/v1/users/import/1', [], [

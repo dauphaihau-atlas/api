@@ -65,7 +65,6 @@ class ProcessImportChunk implements ShouldQueue
                 'name' => $name,
                 'email' => $email,
                 'password' => Hash::make($password),
-                'role' => 'user',
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
