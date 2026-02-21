@@ -15,7 +15,7 @@ class ActivityLogApiTest extends TestCase
 
     public function test_list_activity_logs_returns_403_for_regular_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->getJson('/api/v1/activity-logs', [
@@ -122,7 +122,7 @@ class ActivityLogApiTest extends TestCase
 
     public function test_show_activity_log_returns_403_for_regular_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $log = ActivityLogModel::create([
@@ -171,7 +171,7 @@ class ActivityLogApiTest extends TestCase
     public function test_user_activity_logs_returns_activity_for_that_user_as_subject(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $targetUser = UserModel::factory()->create(['role' => 'user']);
+        $targetUser = UserModel::factory()->create();
         $token = $admin->createToken('test')->plainTextToken;
 
         ActivityLogModel::query()->delete();

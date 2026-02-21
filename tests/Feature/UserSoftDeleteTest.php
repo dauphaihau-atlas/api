@@ -17,7 +17,7 @@ class UserSoftDeleteTest extends TestCase
     public function test_admin_can_soft_delete_user(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $admin->createToken('test')->plainTextToken;
 
         $response = $this->deleteJson('/api/v1/users/'.$user->id, [], [
@@ -31,8 +31,8 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_non_admin_cannot_delete_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
-        $target = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
+        $target = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->deleteJson('/api/v1/users/'.$target->id, [], [
@@ -59,7 +59,7 @@ class UserSoftDeleteTest extends TestCase
     public function test_soft_deleted_users_hidden_by_default(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $user->delete();
         $token = $admin->createToken('test')->plainTextToken;
 
@@ -75,8 +75,8 @@ class UserSoftDeleteTest extends TestCase
     public function test_trashed_only_shows_soft_deleted_users(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $active = UserModel::factory()->create(['role' => 'user']);
-        $deleted = UserModel::factory()->create(['role' => 'user']);
+        $active = UserModel::factory()->create();
+        $deleted = UserModel::factory()->create();
         $deleted->delete();
         $token = $admin->createToken('test')->plainTextToken;
 
@@ -93,8 +93,8 @@ class UserSoftDeleteTest extends TestCase
     public function test_trashed_with_shows_all_users(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $active = UserModel::factory()->create(['role' => 'user']);
-        $deleted = UserModel::factory()->create(['role' => 'user']);
+        $active = UserModel::factory()->create();
+        $deleted = UserModel::factory()->create();
         $deleted->delete();
         $token = $admin->createToken('test')->plainTextToken;
 
@@ -124,7 +124,7 @@ class UserSoftDeleteTest extends TestCase
     public function test_admin_can_restore_soft_deleted_user(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $user->delete();
         $token = $admin->createToken('test')->plainTextToken;
 
@@ -143,8 +143,8 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_non_admin_cannot_restore_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
-        $target = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
+        $target = UserModel::factory()->create();
         $target->delete();
         $token = $user->createToken('test')->plainTextToken;
 
@@ -172,7 +172,7 @@ class UserSoftDeleteTest extends TestCase
     public function test_admin_can_force_delete_user(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $userId = $user->id;
         $token = $admin->createToken('test')->plainTextToken;
 
@@ -188,7 +188,7 @@ class UserSoftDeleteTest extends TestCase
     public function test_admin_can_force_delete_soft_deleted_user(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $userId = $user->id;
         $user->delete();
         $token = $admin->createToken('test')->plainTextToken;
@@ -203,8 +203,8 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_non_admin_cannot_force_delete_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
-        $target = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
+        $target = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->deleteJson('/api/v1/users/'.$target->id.'/force', [], [
@@ -231,7 +231,7 @@ class UserSoftDeleteTest extends TestCase
     public function test_soft_delete_creates_activity_log(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $admin->createToken('test')->plainTextToken;
 
         $this->deleteJson('/api/v1/users/'.$user->id, [], [
@@ -248,7 +248,7 @@ class UserSoftDeleteTest extends TestCase
     public function test_restore_creates_activity_log(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $user->delete();
         $token = $admin->createToken('test')->plainTextToken;
 
@@ -266,7 +266,7 @@ class UserSoftDeleteTest extends TestCase
     public function test_force_delete_creates_activity_log(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $userId = $user->id;
         $token = $admin->createToken('test')->plainTextToken;
 

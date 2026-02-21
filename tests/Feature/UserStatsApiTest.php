@@ -30,7 +30,7 @@ class UserStatsApiTest extends TestCase
 
     public function test_non_admin_cannot_get_stats(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->getJson('/api/v1/users/stats', [
@@ -52,7 +52,7 @@ class UserStatsApiTest extends TestCase
     public function test_total_active_reflects_non_deleted_users(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        UserModel::factory()->count(3)->create(['role' => 'user']);
+        UserModel::factory()->count(3)->create();
         $token = $admin->createToken('test')->plainTextToken;
 
         $response = $this->getJson('/api/v1/users/stats', [
@@ -68,7 +68,7 @@ class UserStatsApiTest extends TestCase
     public function test_total_active_excludes_soft_deleted_users(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $user->delete();
         $token = $admin->createToken('test')->plainTextToken;
 
@@ -84,9 +84,9 @@ class UserStatsApiTest extends TestCase
     public function test_total_deleted_counts_only_soft_deleted_users(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        UserModel::factory()->count(2)->create(['role' => 'user']);
-        $deleted1 = UserModel::factory()->create(['role' => 'user']);
-        $deleted2 = UserModel::factory()->create(['role' => 'user']);
+        UserModel::factory()->count(2)->create();
+        $deleted1 = UserModel::factory()->create();
+        $deleted2 = UserModel::factory()->create();
         $deleted1->delete();
         $deleted2->delete();
         $token = $admin->createToken('test')->plainTextToken;
@@ -103,9 +103,9 @@ class UserStatsApiTest extends TestCase
     public function test_created_today_counts_only_todays_users(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        UserModel::factory()->count(2)->create(['role' => 'user']);
+        UserModel::factory()->count(2)->create();
         // Simulate a user created yesterday
-        UserModel::factory()->create(['role' => 'user', 'created_at' => now()->subDay()]);
+        UserModel::factory()->create(['created_at' => now()->subDay()]);
         $token = $admin->createToken('test')->plainTextToken;
 
         $response = $this->getJson('/api/v1/users/stats', [
@@ -130,7 +130,7 @@ class UserStatsApiTest extends TestCase
         $this->assertSame(1, $first->json('data.total_active'));
 
         // Creating a user should flush the cache
-        UserModel::factory()->create(['role' => 'user']);
+        UserModel::factory()->create();
 
         // Cache should reflect updated count
         $second = $this->getJson('/api/v1/users/stats', ['Authorization' => 'Bearer '.$token]);
@@ -141,7 +141,7 @@ class UserStatsApiTest extends TestCase
     public function test_stats_cache_is_invalidated_when_user_is_soft_deleted(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $admin->createToken('test')->plainTextToken;
 
         // Prime the cache
@@ -162,7 +162,7 @@ class UserStatsApiTest extends TestCase
     public function test_stats_cache_is_invalidated_when_user_is_restored(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $user->delete();
         $token = $admin->createToken('test')->plainTextToken;
 
@@ -184,7 +184,7 @@ class UserStatsApiTest extends TestCase
     public function test_stats_cache_is_invalidated_when_user_is_force_deleted(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $admin->createToken('test')->plainTextToken;
 
         // Prime the cache

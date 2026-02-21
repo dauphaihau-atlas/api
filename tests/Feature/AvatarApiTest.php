@@ -83,7 +83,7 @@ class AvatarApiTest extends TestCase
      */
     public function test_users_user_avatar_returns_403_when_authenticated_as_non_admin(): void
     {
-        $regularUser = UserModel::factory()->create(['role' => 'user']);
+        $regularUser = UserModel::factory()->create();
         $targetUser = UserModel::factory()->create();
         $token = $regularUser->createToken('test')->plainTextToken;
         $file = UploadedFile::fake()->image('avatar.jpg', 100, 100);

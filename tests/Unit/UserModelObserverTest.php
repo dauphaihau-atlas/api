@@ -23,7 +23,6 @@ class UserModelObserverTest extends TestCase
         $user = UserModel::factory()->create([
             'name' => 'New User',
             'email' => 'newuser@example.com',
-            'role' => 'user',
         ]);
 
         $this->assertDatabaseCount('activity_log', 2);
@@ -47,14 +46,13 @@ class UserModelObserverTest extends TestCase
         $admin = UserModel::factory()->admin()->create();
         Auth::login($admin);
 
-        $user = UserModel::factory()->create(['name' => 'Old Name', 'role' => 'user']);
+        $user = UserModel::factory()->create(['name' => 'Old Name']);
         $originalId = $user->id;
 
         ActivityLogModel::query()->delete();
         $this->assertDatabaseCount('activity_log', 0);
 
         $user->name = 'New Name';
-        $user->role = 'admin';
         $user->save();
 
         $updatedLog = ActivityLogModel::where('event', 'updated')

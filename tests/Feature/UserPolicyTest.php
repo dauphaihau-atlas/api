@@ -30,7 +30,7 @@ class UserPolicyTest extends TestCase
 
     public function test_view_any_denied_for_regular_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->viewAny($user));
     }
@@ -40,22 +40,22 @@ class UserPolicyTest extends TestCase
     public function test_view_allowed_for_admin(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $target = UserModel::factory()->create(['role' => 'user']);
+        $target = UserModel::factory()->create();
 
         $this->assertTrue($this->policy->view($admin, $target));
     }
 
     public function test_view_allowed_for_owner(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
 
         $this->assertTrue($this->policy->view($user, $user));
     }
 
     public function test_view_denied_for_non_owner(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
-        $other = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
+        $other = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->view($user, $other));
     }
@@ -71,7 +71,7 @@ class UserPolicyTest extends TestCase
 
     public function test_create_denied_for_regular_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->create($user));
     }
@@ -81,22 +81,22 @@ class UserPolicyTest extends TestCase
     public function test_update_allowed_for_admin(): void
     {
         $admin = UserModel::factory()->admin()->create();
-        $target = UserModel::factory()->create(['role' => 'user']);
+        $target = UserModel::factory()->create();
 
         $this->assertTrue($this->policy->update($admin, $target));
     }
 
     public function test_update_allowed_for_owner(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
 
         $this->assertTrue($this->policy->update($user, $user));
     }
 
     public function test_update_denied_for_non_owner(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
-        $other = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
+        $other = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->update($user, $other));
     }
@@ -112,7 +112,7 @@ class UserPolicyTest extends TestCase
 
     public function test_delete_denied_for_regular_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->delete($user));
     }
@@ -128,7 +128,7 @@ class UserPolicyTest extends TestCase
 
     public function test_import_denied_for_regular_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->import($user));
     }
@@ -144,7 +144,7 @@ class UserPolicyTest extends TestCase
 
     public function test_export_denied_for_regular_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->export($user));
     }
@@ -160,7 +160,7 @@ class UserPolicyTest extends TestCase
 
     public function test_restore_denied_for_regular_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->restore($user));
     }
@@ -176,7 +176,7 @@ class UserPolicyTest extends TestCase
 
     public function test_force_delete_denied_for_regular_user(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->forceDelete($user));
     }
@@ -185,7 +185,7 @@ class UserPolicyTest extends TestCase
 
     public function test_users_index_returns_403_for_non_admin(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->getJson('/api/v1/users', [
@@ -209,7 +209,7 @@ class UserPolicyTest extends TestCase
 
     public function test_avatar_update_allowed_for_owner(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->postJson('/api/v1/users/'.$user->id.'/avatar', [], [
@@ -222,8 +222,8 @@ class UserPolicyTest extends TestCase
 
     public function test_avatar_update_denied_for_non_owner(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
-        $other = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
+        $other = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->postJson('/api/v1/users/'.$other->id.'/avatar', [], [
