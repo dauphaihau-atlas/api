@@ -24,4 +24,19 @@ interface AuthServiceInterface
      * Revoke the current request's API token (e.g. logout).
      */
     public function revokeCurrentToken(): void;
+
+    /**
+     * Revoke an API token by its plain-text value (e.g. cookie-based logout).
+     */
+    public function revokeTokenByPlaintext(string $token): void;
+
+    /**
+     * Revoke all API tokens for the given user id (e.g. before issuing a new web session token).
+     */
+    public function revokeAllTokensForUser(int $userId): void;
+
+    /**
+     * Log the user into the web session guard (for SPA stateful requests).
+     */
+    public function loginSession(int $userId): void;
 }

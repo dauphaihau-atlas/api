@@ -19,7 +19,8 @@ use App\Presentation\Http\Resources\UserResource;
 use App\Presentation\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 class AuthController extends Controller
 {
@@ -62,23 +63,20 @@ class AuthController extends Controller
         }
 
         $user = $this->userRepository->findById($response->id);
-        $avatarUrl = null;
-        if ($user !== null) {
-            $avatarPath = $user->getAvatarPath();
-            if ($avatarPath !== null && $avatarPath !== '') {
-                $avatarUrl = Storage::disk(config('filesystems.avatars_disk', 'public'))->url($avatarPath);
-            }
+        if ($user === null) {
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        // For SPA requests from a stateful domain, start a session so auth:sanctum
+        // can authenticate subsequent requests via the session cookie instead of
+        // a Bearer token. Mobile / non-stateful clients use the returned token.
+        if (EnsureFrontendRequestsAreStateful::fromFrontend($request)) {
+            $this->authService->loginSession($response->id);
         }
 
         return ApiResponse::ok([
             'token' => $response->token,
-            'user' => [
-                'id' => $response->id,
-                'name' => $response->name,
-                'email' => $response->email,
-                'avatar_url' => $avatarUrl,
-                'created_at' => $response->createdAt->format('Y-m-d H:i:s'),
-            ],
+            'user' => new UserResource($user),
         ]);
     }
 
@@ -128,9 +126,17 @@ class AuthController extends Controller
      * @response 204 scenario="Success" {}
      * @response 401 {"message":"Unauthenticated."}
      */
-    public function logout(): JsonResponse
+    public function logout(Request $request): JsonResponse
     {
+        // Revoke the Bearer token (no-op for session-based SPA auth).
         $this->logoutUserUseCase->execute();
+
+        // Invalidate the session for SPA clients.
+        if ($request->hasSession()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return ApiResponse::noContent();
     }

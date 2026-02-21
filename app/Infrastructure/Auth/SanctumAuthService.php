@@ -7,7 +7,9 @@ use App\Core\Application\DTOs\AuthUserDTO;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use DateTimeImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class SanctumAuthService implements AuthServiceInterface
 {
@@ -46,9 +48,25 @@ class SanctumAuthService implements AuthServiceInterface
         $user = $this->request->user();
         if ($user !== null && method_exists($user, 'currentAccessToken')) {
             $token = $user->currentAccessToken();
-            if ($token !== null) {
+            // TransientToken is used for session-based (SPA) auth and has no DB record to delete.
+            if ($token instanceof PersonalAccessToken) {
                 $token->delete();
             }
         }
+    }
+
+    public function revokeTokenByPlaintext(string $token): void
+    {
+        PersonalAccessToken::findToken($token)?->delete();
+    }
+
+    public function revokeAllTokensForUser(int $userId): void
+    {
+        UserModel::findOrFail($userId)->tokens()->delete();
+    }
+
+    public function loginSession(int $userId): void
+    {
+        Auth::login(UserModel::findOrFail($userId));
     }
 }

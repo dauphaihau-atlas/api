@@ -10,11 +10,15 @@ class LoginUserUseCase
         private readonly AuthServiceInterface $authService
     ) {}
 
-    public function execute(LoginUserRequest $request): ?LoginUserResponse
+    public function execute(LoginUserRequest $request, bool $revokeExistingTokens = false): ?LoginUserResponse
     {
         $user = $this->authService->attempt($request->email, $request->password);
         if ($user === null) {
             return null;
+        }
+
+        if ($revokeExistingTokens) {
+            $this->authService->revokeAllTokensForUser($user->id);
         }
 
         $token = $this->authService->createToken($user->id, 'api');
