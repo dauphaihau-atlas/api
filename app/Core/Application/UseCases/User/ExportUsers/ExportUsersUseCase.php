@@ -13,7 +13,7 @@ use Throwable;
 
 class ExportUsersUseCase
 {
-    private const CSV_HEADER = ['id', 'name', 'email', 'role', 'created_at'];
+    private const CSV_HEADER = ['id', 'name', 'email', 'roles', 'created_at'];
 
     private const TEMPORARY_URL_EXPIRY_MINUTES = 15;
 
@@ -106,10 +106,10 @@ class ExportUsersUseCase
         $id = $user->getId() !== null ? (string) $user->getId() : '';
         $name = $user->getName();
         $email = $user->getEmail()->getValue();
-        $role = $user->getRole() ?? '';
+        $roles = implode('|', array_map(fn ($r) => $r->getSlug(), $user->getRoles()));
         $createdAt = $user->getCreatedAt()->format('Y-m-d H:i:s');
 
-        return [$id, $name, $email, $role, $createdAt];
+        return [$id, $name, $email, $roles, $createdAt];
     }
 
     private function escapeCsvField(string $value): string

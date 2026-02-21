@@ -28,15 +28,13 @@ class ExportUsersUseCaseTest extends TestCase
      */
     public function test_execute_writes_csv_with_users_and_correct_header(): void
     {
-        UserModel::factory()->create([
+        UserModel::factory()->user()->create([
             'name' => 'Alice',
             'email' => 'alice@test.com',
-            'role' => 'user',
         ]);
-        UserModel::factory()->create([
+        UserModel::factory()->admin()->create([
             'name' => 'Bob',
             'email' => 'bob@test.com',
-            'role' => 'admin',
         ]);
 
         $response = $this->useCase->execute(new ExportUsersRequest(adminId: 1));
@@ -48,7 +46,7 @@ class ExportUsersUseCaseTest extends TestCase
         $this->assertTrue($disk->exists($response->path));
         $content = $disk->get($response->path);
 
-        $this->assertStringContainsString('id,name,email,role,created_at', $content);
+        $this->assertStringContainsString('id,name,email,roles,created_at', $content);
         $this->assertStringContainsString('alice@test.com', $content);
         $this->assertStringContainsString('bob@test.com', $content);
         $this->assertStringContainsString('user', $content);
@@ -70,7 +68,7 @@ class ExportUsersUseCaseTest extends TestCase
         $disk = Storage::disk(config('filesystems.exports_disk', 'local'));
         $this->assertTrue($disk->exists($response->path));
         $content = $disk->get($response->path);
-        $this->assertSame('id,name,email,role,created_at', trim($content));
+        $this->assertSame('id,name,email,roles,created_at', trim($content));
         $this->assertNull($response->url);
         $this->assertNull($response->expiresAt);
     }
@@ -94,7 +92,6 @@ class ExportUsersUseCaseTest extends TestCase
         UserModel::factory()->create([
             'name' => 'Doe, Jane',
             'email' => 'jane@test.com',
-            'role' => 'user',
         ]);
 
         $response = $this->useCase->execute(new ExportUsersRequest(adminId: 1));

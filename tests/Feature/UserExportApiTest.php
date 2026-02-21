@@ -34,7 +34,7 @@ class UserExportApiTest extends TestCase
      */
     public function test_users_export_returns_403_when_authenticated_as_non_admin(): void
     {
-        $user = UserModel::factory()->create(['role' => 'user']);
+        $user = UserModel::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->get('/api/v1/users/export', [
@@ -70,7 +70,7 @@ class UserExportApiTest extends TestCase
         $disk = Storage::disk(config('filesystems.exports_disk', 'local'));
         $this->assertTrue($disk->exists($path));
         $content = $disk->get($path);
-        $this->assertStringContainsString('id,name,email,role,created_at', $content);
+        $this->assertStringContainsString('id,name,email,roles,created_at', $content);
     }
 
     /**
@@ -98,7 +98,7 @@ class UserExportApiTest extends TestCase
         $downloadResponse->assertStatus(200);
         $this->assertStringContainsString('text/csv', $downloadResponse->headers->get('Content-Type') ?? '');
         $csv = $downloadResponse->streamedContent();
-        $this->assertStringContainsString('id,name,email,role,created_at', $csv);
+        $this->assertStringContainsString('id,name,email,roles,created_at', $csv);
         $this->assertStringContainsString($admin->email, $csv);
     }
 }
