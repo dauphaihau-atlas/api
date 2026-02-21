@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,14 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
+        UserModel::factory()->admin()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
-            'role' => 'admin',
         ]);
 
-        User::factory(9)->create([
-            'role' => 'user',
-        ]);
+        UserModel::factory(9)->user()->create();
     }
 }
