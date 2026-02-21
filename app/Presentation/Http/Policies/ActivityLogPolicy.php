@@ -21,6 +21,6 @@ class ActivityLogPolicy
 
     private function isAdmin(UserModel $user): bool
     {
-        return ($user->role ?? null) === 'admin';
+        return $user->hasRole('admin');
     }
 }

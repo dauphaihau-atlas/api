@@ -3,6 +3,7 @@
 namespace App\Presentation\Http\Resources;
 
 use App\Core\Application\UseCases\User\CreateUser\CreateUserResponse;
+use App\Core\Domain\Entities\Role;
 use App\Core\Domain\Entities\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -30,7 +31,7 @@ class UserResource extends JsonResource
                 'name' => $this->resource->getName(),
                 'email' => $this->resource->getEmail()->getValue(),
                 'avatar_url' => $avatarUrl,
-                'role' => $this->resource->getRole(),
+                'roles' => array_map(fn (Role $r) => $r->getSlug(), $this->resource->getRoles()),
                 'created_at' => $this->resource->getCreatedAt()?->format('Y-m-d H:i:s'),
             ];
 
