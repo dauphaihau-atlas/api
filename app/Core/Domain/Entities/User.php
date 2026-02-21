@@ -13,7 +13,7 @@ class User
         private Email $email,
         private ?string $password = null,
         private ?string $avatarPath = null,
-        private ?string $role = null,
+        private array $roles = [],
         private ?DateTimeImmutable $createdAt = null,
         private ?DateTimeImmutable $updatedAt = null,
         private ?DateTimeImmutable $deletedAt = null
@@ -57,9 +57,23 @@ class User
         return $this->avatarPath;
     }
 
-    public function getRole(): ?string
+    /**
+     * @return Role[]
+     */
+    public function getRoles(): array
     {
-        return $this->role;
+        return $this->roles;
+    }
+
+    public function hasRole(string $slug): bool
+    {
+        foreach ($this->roles as $role) {
+            if ($role->getSlug() === $slug) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function getDeletedAt(): ?DateTimeImmutable

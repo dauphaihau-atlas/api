@@ -4,8 +4,10 @@ namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
 use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Application\DTOs\UserFilters;
+use App\Core\Domain\Entities\Role;
 use App\Core\Domain\Entities\User;
 use App\Core\Domain\ValueObjects\Email;
+use App\Infrastructure\Persistence\Eloquent\Models\RoleModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -14,14 +16,14 @@ class EloquentUserRepository implements UserRepositoryInterface
 {
     public function findById(int $id): ?User
     {
-        $model = UserModel::find($id);
+        $model = UserModel::with('roles')->find($id);
 
         return $model !== null ? $this->toEntity($model) : null;
     }
 
     public function findByEmail(string $email): ?User
     {
-        $model = UserModel::where('email', $email)->first();
+        $model = UserModel::with('roles')->where('email', $email)->first();
 
         return $model !== null ? $this->toEntity($model) : null;
     }
@@ -40,8 +42,8 @@ class EloquentUserRepository implements UserRepositoryInterface
             $model->password = $user->getPassword();
         }
         $model->avatar_path = $user->getAvatarPath();
-        $model->role = $user->getRole() ?? $model->role ?? 'user';
         $model->save();
+        $model->load('roles');
 
         return $this->toEntity($model);
     }
@@ -67,7 +69,7 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     public function findTrashedById(int $id): ?User
     {
-        $model = UserModel::onlyTrashed()->find($id);
+        $model = UserModel::with('roles')->onlyTrashed()->find($id);
 
         return $model !== null ? $this->toEntity($model) : null;
     }
@@ -77,7 +79,7 @@ class EloquentUserRepository implements UserRepositoryInterface
      */
     public function findAll(): array
     {
-        return UserModel::all()
+        return UserModel::with('roles')->get()
             ->map(fn (UserModel $model) => $this->toEntity($model))
             ->values()
             ->all();
@@ -91,7 +93,7 @@ class EloquentUserRepository implements UserRepositoryInterface
         $perPage = max(1, min($perPage, 100));
         $offset = max(0, ($page - 1) * $perPage);
 
-        $query = $this->applyFilters(UserModel::query(), $filters);
+        $query = $this->applyFilters(UserModel::with('roles'), $filters);
 
         $sortColumn = $filters->sort !== '' && str_starts_with($filters->sort, '-')
             ? substr($filters->sort, 1)
@@ -179,7 +181,7 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     private function validateSortColumn(string $column): string
     {
-        $allowed = ['id', 'name', 'email', 'role', 'created_at', 'updated_at', 'deleted_at'];
+        $allowed = ['id', 'name', 'email', 'created_at', 'updated_at', 'deleted_at'];
 
         return in_array($column, $allowed, true) ? $column : 'id';
     }
@@ -201,13 +203,17 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     private function toEntity(UserModel $model): User
     {
+        $roles = $model->relationLoaded('roles')
+            ? $model->roles->map(fn (RoleModel $r) => new Role($r->id, $r->name, $r->slug, $r->description))->all()
+            : [];
+
         return new User(
             id: $model->id,
             name: $model->name,
             email: new Email($model->email),
             password: $model->password,
             avatarPath: $model->avatar_path,
-            role: $model->role ?? null,
+            roles: $roles,
             createdAt: $model->created_at?->toDateTimeImmutable(),
             updatedAt: $model->updated_at?->toDateTimeImmutable(),
             deletedAt: $model->deleted_at?->toDateTimeImmutable()

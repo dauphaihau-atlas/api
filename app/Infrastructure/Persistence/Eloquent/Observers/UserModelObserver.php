@@ -80,7 +80,7 @@ class UserModelObserver
     private function safeSnapshot(UserModel $model): array
     {
         $attrs = [];
-        foreach (['name', 'email', 'role', 'avatar_path'] as $key) {
+        foreach (['name', 'email', 'avatar_path'] as $key) {
             if (array_key_exists($key, $model->getAttributes())) {
                 $attrs[$key] = $model->getAttribute($key);
             }
