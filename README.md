@@ -6,20 +6,32 @@ A production-ready **API-only admin dashboard** built with Laravel 12, following
 
 ## Applied Techniques
 
+**Architecture**
 - **Clean Architecture** — Domain, Application, Infrastructure, and Presentation layers with strict inward-only dependencies
-- **Role-Based Authorization** — Policy classes + admin Gate guard all privileged endpoints
-- **Queue, Jobs & Workers** — Async CSV import dispatched as batched jobs via Horizon, with retry and timeout handling
-- **Soft Deletes** — Trash / restore / force-delete lifecycle on users with filter support
-- **Response Caching with ETag** — Redis version tokens drive `304 Not Modified` short-circuits; falls back to MD5 body hash
-- **File Storage** — Avatar upload, CSV import ingestion, and export generation; configurable between local disk and MinIO (S3-compatible)
-- **Full-Text Search** — PostgreSQL `tsquery` with GIN indexes on users; `LIKE` fallback for other databases
-- **Activity Log** — Model observers capture every user write (created, updated, deleted, restored, force-deleted), recording subject, causer, and changed attributes
-- **Real-Time Broadcasting** — Import progress streamed over private WebSocket channels via Laravel Reverb
-- **Rate Limiting** — Three tiers: standard API (60/min), login (5/min), heavy operations like import/export (10/min)
-- **API Token Authentication** — Sanctum tokens with per-request revocation on logout
-- **Signed URLs** — Export download links are time-limited (15-min expiry) and verified via Laravel's `signed` middleware
 - **Structured Error Handling** — Custom `ApiException` hierarchy maps every failure to a consistent `{ message, error_code, context }` JSON envelope
+
+**Security**
+- **API Token Authentication** — Sanctum tokens with per-request revocation on logout
+- **Role-Based Authorization (RBAC)** — Roles and permissions stored in dedicated tables with many-to-many pivots. Gate + Policy classes consume `UserModel::hasRole()` / `hasPermission()` to guard all privileged endpoints; 12 permissions seeded across `users.*` and `activity-logs.*` groups
+- **Rate Limiting** — Three tiers: standard API (60/min), login (5/min), heavy operations like import/export (10/min)
+- **Signed URLs** — Export download links are time-limited (15-min expiry) and verified via Laravel's `signed` middleware
+
+**Caching**
+- **Response Caching with ETag** — Redis version tokens drive `304 Not Modified` short-circuits; falls back to MD5 body hash
+- **Cache-Aside (Query Caching)** — Tagged Redis cache wraps expensive DB queries (e.g. user stats) via `Cache::tags()->remember()`; tags are invalidated on every entity write so stale data is never served
+
+**Async & Real-Time**
+- **Queue, Jobs & Workers** — Async CSV import dispatched as batched jobs via Horizon, with retry and timeout handling
+- **Real-Time Broadcasting** — Import progress streamed over private WebSocket channels via Laravel Reverb
 - **Notifications** — `UserCreatedNotification` dispatched on user creation via a `UserCreatedNotifierInterface` contract
+
+**Data Management**
+- **Soft Deletes** — Trash / restore / force-delete lifecycle on users with filter support
+- **Full-Text Search** — PostgreSQL `tsquery` with GIN indexes on users; `LIKE` fallback for other databases
+- **File Storage** — Avatar upload, CSV import ingestion, and export generation; configurable between local disk and MinIO (S3-compatible)
+
+**Observability**
+- **Activity Log** — Model observers capture every user write (created, updated, deleted, restored, force-deleted), recording subject, causer, and changed attributes
 - **Structured Request Logging** — Every API request is logged with `X-Request-Id` tracing, route name, duration (ms), user ID, and IP; log level scales with status code (info / warning / error); sensitive headers stripped before logging
 - **Built-in Web Dashboards** — Horizon for queue monitoring, Telescope for request/query/exception inspection, Scribe for auto-generated API documentation
 
@@ -62,7 +74,7 @@ app/
 |---|---|
 | `RepositoryServiceProvider` | Repository interfaces → Eloquent implementations |
 | `UseCaseServiceProvider` | Service interfaces → concrete implementations |
-| `AppServiceProvider` | Gates (admin role), rate limiter config |
+| `AppServiceProvider` | Gates (`admin` role via RBAC), rate limiter config |
 
 ---
 
@@ -133,9 +145,12 @@ All routes are prefixed `/v1` with `throttle:api` (60 req/min).
 
 ### Role-Based Authorization
 
-- `admin` role gate controls all privileged endpoints
+- **RBAC tables** — `roles`, `permissions`, `role_user`, `permission_role` replace the old `role` string column
+- `admin` Gate and all policy `isAdmin()` checks resolve via `$user->hasRole('admin')` on the `UserModel`
 - Policy classes: `UserPolicy`, `ActivityLogPolicy`
 - Users can view/update their own profile regardless of role
+- Default roles seeded: `admin` (all permissions) and `user` (self-access only)
+- 12 permissions seeded across two groups: `users.*` and `activity-logs.*`
 
 ### Async CSV Import
 
@@ -200,7 +215,9 @@ Set to `minio` (or any S3-compatible config) for cloud storage.
 
 ### Entities
 
-**`User`** — id, name, email (`Email` VO), password, avatarPath, role, timestamps, deletedAt
+**`User`** — id, name, email (`Email` VO), password, avatarPath, roles (`Role[]`), timestamps, deletedAt
+
+**`Role`** — id, name, slug, description
 
 **`UserImport`** — id, batchId, filePath, status (`pending|processing|completed|failed|cancelled`), totalRows, processedRows, createdCount, updatedCount, errors[], timestamps
 
@@ -261,6 +278,10 @@ vendor/bin/pint        # Auto-format (Laravel preset)
 | Table | Purpose |
 |---|---|
 | `users` | Core user records with soft deletes |
+| `roles` | Named roles (e.g. `admin`, `user`) |
+| `permissions` | Granular permissions grouped by resource |
+| `role_user` | Many-to-many: users ↔ roles |
+| `permission_role` | Many-to-many: roles ↔ permissions |
 | `personal_access_tokens` | Sanctum API tokens |
 | `user_imports` | Import job state and progress tracking |
 | `activity_log` | Polymorphic audit trail |
