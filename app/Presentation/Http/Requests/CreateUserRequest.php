@@ -19,4 +19,22 @@ class CreateUserRequest extends FormRequest
             'password' => ['required', 'string', 'min:8'],
         ];
     }
+
+    public function bodyParameters(): array
+    {
+        return [
+            'name' => [
+                'description' => 'The user\'s full name.',
+                'example' => 'Jane Doe',
+            ],
+            'email' => [
+                'description' => 'The user\'s email address. Must be unique.',
+                'example' => 'jane@example.com',
+            ],
+            'password' => [
+                'description' => 'The user\'s password. Minimum 8 characters.',
+                'example' => 'secret123',
+            ],
+        ];
+    }
 }
