@@ -1,6 +1,6 @@
-# Admin Dashboard API
+# Atlas API
 
-A production-ready **API-only admin dashboard** built with Laravel 12, following Clean Architecture principles. Features role-based access, async CSV import/export, real-time WebSocket broadcasting, Redis caching with ETag support, and comprehensive activity logging.
+A production-ready **API-only backend** built with Laravel 12, following Clean Architecture principles. Features role-based access, async CSV import/export, real-time WebSocket broadcasting, Redis caching with ETag support, and comprehensive activity logging.
 
 ---
 
