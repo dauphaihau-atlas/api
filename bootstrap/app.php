@@ -36,6 +36,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
 
+        // The broadcasting auth route is already guarded by auth:sanctum; excluding it from
+        // CSRF avoids a cross-subdomain cookie-domain issue (XSRF-TOKEN set on api.* is not
+        // readable by JS served from the parent domain, so the header can never be sent).
+        $middleware->validateCsrfTokens(except: [
+            'api/v1/broadcasting/auth',
+        ]);
+
         $middleware->appendToGroup('api', LogApiRequests::class);
         $middleware->appendToGroup('api', CacheControlMiddleware::class);
 
