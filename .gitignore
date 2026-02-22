@@ -1,6 +1,8 @@
 *.log
 .DS_Store
-.env
+# .env is tracked; only staging/prod env files are ignored
+.env.stg
+.env.prod
 .env.backup
 .env.production
 .phpactor.json
