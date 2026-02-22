@@ -11,10 +11,10 @@ use function Knuckles\Scribe\Config\removeStrategies;
 
 return [
     // The HTML <title> for the generated documentation.
-    'title' => 'Admin Dashboard API',
+    'title' => 'Atlas API',
 
     // A short description of your API. Will be included in the docs webpage, Postman collection and OpenAPI spec.
-    'description' => 'API documentation for the Admin Dashboard application.',
+    'description' => 'API documentation for the Atlas application.',
 
     // Text to place in the "Introduction" section, right after the `description`. Markdown and HTML are supported.
     'intro_text' => <<<'INTRO'
