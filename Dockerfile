@@ -18,6 +18,11 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
+RUN { \
+    echo 'upload_max_filesize = 64M'; \
+    echo 'post_max_size = 64M'; \
+    } > "$PHP_INI_DIR/conf.d/uploads.ini"
+
 WORKDIR /var/www/html
 
 COPY --chown=www-data:www-data . .
