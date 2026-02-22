@@ -41,6 +41,9 @@ class AuthController extends Controller
      *
      * @unauthenticated
      *
+     * @bodyParam email string required Must be a valid email address. Example: admin@example.com
+     * @bodyParam password string required User password. Example: password
+     *
      * @response 200 {"token":"1|abc123...","user":{"id":1,"name":"Admin","email":"admin@example.com","avatar_url":null,"created_at":"2025-01-01 00:00:00"}}
      * @response 401 {"message":"Invalid credentials"}
      * @response 422 {"message":"Validation failed","errors":{"email":["The email field is required."]}}
