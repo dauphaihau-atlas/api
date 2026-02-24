@@ -12,7 +12,7 @@ A production-ready **API-only backend** built with Laravel 12, following Clean A
 
 **Security**
 - **API Token Authentication** — Sanctum tokens with per-request revocation on logout
-- **Role-Based Authorization (RBAC)** — Roles and permissions stored in dedicated tables with many-to-many pivots. Gate + Policy classes consume `UserModel::hasRole()` / `hasPermission()` to guard all privileged endpoints; 12 permissions seeded across `users.*` and `activity-logs.*` groups
+- **Role-Based Authorization (RBAC)** — Roles and permissions stored in dedicated tables with many-to-many pivots. Gate + Policy classes consume `UserModel::hasRole()` / `hasPerm  ission()` to guard all privileged endpoints; 12 permissions seeded across `users.*` and `activity-logs.*` groups
 - **Rate Limiting** — Three tiers: standard API (60/min), login (5/min), heavy operations like import/export (10/min)
 - **Signed URLs** — Export download links are time-limited (15-min expiry) and verified via Laravel's `signed` middleware
 
@@ -75,6 +75,52 @@ app/
 | `RepositoryServiceProvider` | Repository interfaces → Eloquent implementations |
 | `UseCaseServiceProvider` | Service interfaces → concrete implementations |
 | `AppServiceProvider` | Gates (`admin` role via RBAC), rate limiter config |
+
+---
+
+## Design Patterns Applied
+
+### GoF Patterns
+
+| Pattern | Type | Where Used |
+|---|---|---|
+| **Repository** | Structural | `EloquentUserRepository`, `EloquentActivityLogRepository`, `EloquentUserImportRepository` abstract all data access behind interfaces |
+| **Observer** | Behavioral | `UserModelObserver` hooks into Eloquent lifecycle events (created, updated, deleted, restored, forceDeleted) to write activity logs and invalidate cache |
+| **Strategy** | Behavioral | `EmailServiceInterface`, `AuthServiceInterface`, `UserCreatedNotifierInterface` — swap implementations without touching call sites |
+| **Adapter** | Structural | Repository `toEntity()` methods bridge Eloquent models to domain entities, keeping the domain layer ORM-agnostic |
+| **Chain of Responsibility** | Behavioral | Middleware stack — `LogApiRequests` → `CacheControlMiddleware` → rate limiters → authorization gates — each link handles or passes the request |
+| **Command** | Behavioral | `ProcessImportChunk` encapsulates a CSV chunk job with retries, timeout, and batch callbacks; dispatched to the queue |
+| **Builder** | Creational | `Bus::batch()->name()->then()->catch()->dispatch()` constructs the import batch object step by step |
+| **Factory Method** | Creational | `UserResource::toArray()` constructs API response representations from either a domain `User` entity or a `CreateUserResponse` DTO |
+| **Template Method** | Behavioral | `EloquentUserRepository::findPaginated()` defines the query skeleton; `applyFilters()` delegates database-specific logic (PostgreSQL `tsquery` vs `LIKE`) |
+
+### DDD / Clean Architecture Patterns
+
+| Pattern | Where Used |
+|---|---|
+| **Value Object** | `Email` — immutable, self-validating; throws `InvalidEmailException` on bad input |
+| **Entity** | `User`, `UserImport`, `Role` — identity-bearing domain objects with lifecycle |
+| **Use Case (Interactor)** | One class per action (`CreateUserUseCase`, `ImportUsersUseCase`, …) each with a typed `Request` + `Response` DTO pair |
+| **DTO** | `UserFilters`, `ActivityLogFilters`, `AuthUserDTO`, `ActivityLogEntry` — readonly data carriers across layer boundaries |
+| **Domain Exception** | `InvalidEmailException` raised inside the domain; outer layers map it to `ApiException` subclasses |
+
+### Laravel-Specific Patterns
+
+| Pattern | Where Used |
+|---|---|
+| **Service Provider / DI Container** | `RepositoryServiceProvider`, `UseCaseServiceProvider`, `AppServiceProvider` bind interfaces to concrete implementations |
+| **Form Request** | `CreateUserRequest`, `ImportUsersRequest`, `LoginRequest`, `UploadAvatarRequest` — validation + authorization colocated |
+| **API Resource (Transformer)** | `UserResource` transforms domain entities to versioned JSON; decouples wire format from internal model |
+| **Policy** | `UserPolicy`, `ActivityLogPolicy` — model-scoped authorization; consumed via `Gate::authorize()` |
+| **Model Observer** | `UserModelObserver` registered in `AppServiceProvider::boot()` |
+| **Event Broadcasting** | `ImportProgressUpdated`, `ImportCompleted` broadcast over private Reverb channels for real-time progress |
+| **Notification** | `UserCreatedNotification` dispatched through `UserCreatedNotifierInterface`; delivers mail + database channels |
+| **Queueable Job** | `ProcessImportChunk` implements `ShouldQueue` with `Batchable`, `Dispatchable`, `Queueable`, `SerializesModels` |
+| **Soft Delete** | `SoftDeletes` trait on `UserModel`; trash / restore / force-delete lifecycle with filter support |
+| **ETag / HTTP Caching** | `CacheControlMiddleware` computes ETags from Redis version tokens; short-circuits 304 responses |
+| **Rate Limiter** | Three named limiters (`api` 60/min, `login` 5/min, `heavy` 10/min) defined in `AppServiceProvider` |
+| **Signed URL** | Export download links are time-limited (15 min) and verified via the `signed` middleware |
+| **Structured Request Logging** | `LogApiRequests` middleware records `X-Request-Id`, duration, status, user, and sanitized headers for every request |
 
 ---
 
