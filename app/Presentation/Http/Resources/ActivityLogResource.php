@@ -33,6 +33,8 @@ class ActivityLogResource extends JsonResource
             'causer_name' => $entry->causerName,
             'causer_email' => $entry->causerEmail,
             'properties' => $entry->properties,
+            'old_values' => $entry->oldValues,
+            'new_values' => $entry->newValues,
             'created_at' => $entry->createdAt->format(DateTimeInterface::ATOM),
         ];
     }

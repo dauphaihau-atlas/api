@@ -67,6 +67,8 @@ class ActivityLogApiTest extends TestCase
                     'causer_name',
                     'causer_email',
                     'properties',
+                    'old_values',
+                    'new_values',
                     'created_at',
                 ],
             ],

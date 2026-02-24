@@ -62,7 +62,7 @@ class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
                     $q->whereExists(function ($sub) use ($tsquery): void {
                         $sub->select(DB::raw(1))
                             ->from('users')
-                            ->whereColumn('users.id', 'activity_log.causer_id')
+                            ->whereColumn('users.id', 'activity_logs.causer_id')
                             ->whereRaw(
                                 "to_tsvector('simple', coalesce(users.name, '') || ' ' || coalesce(users.email, '')) @@ to_tsquery('simple', ?)",
                                 [$tsquery]
@@ -78,7 +78,7 @@ class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
                     $q->whereExists(function ($sub) use ($like): void {
                         $sub->select(DB::raw(1))
                             ->from('users')
-                            ->whereColumn('users.id', 'activity_log.causer_id')
+                            ->whereColumn('users.id', 'activity_logs.causer_id')
                             ->where(function ($userQ) use ($like): void {
                                 $userQ->where('users.name', 'LIKE', $like)
                                     ->orWhere('users.email', 'LIKE', $like);
@@ -164,6 +164,8 @@ class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
             createdAt: $createdAt,
             causerName: $causerName,
             causerEmail: $causerEmail,
+            oldValues: $model->old_values,
+            newValues: $model->new_values,
         );
     }
 }

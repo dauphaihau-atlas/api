@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ActivityLogModel extends Model
 {
-    protected $table = 'activity_log';
+    protected $table = 'activity_logs';
 
     protected $fillable = [
         'log_name',
@@ -19,12 +19,16 @@ class ActivityLogModel extends Model
         'causer_type',
         'causer_id',
         'properties',
+        'old_values',
+        'new_values',
     ];
 
     protected function casts(): array
     {
         return [
             'properties' => 'array',
+            'old_values' => 'array',
+            'new_values' => 'array',
         ];
     }
 

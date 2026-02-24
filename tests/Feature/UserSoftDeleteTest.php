@@ -238,7 +238,7 @@ class UserSoftDeleteTest extends TestCase
             'Authorization' => 'Bearer '.$token,
         ]);
 
-        $this->assertDatabaseHas('activity_log', [
+        $this->assertDatabaseHas('activity_logs', [
             'event' => 'deleted',
             'subject_id' => $user->id,
             'causer_id' => $admin->id,
@@ -256,7 +256,7 @@ class UserSoftDeleteTest extends TestCase
             'Authorization' => 'Bearer '.$token,
         ]);
 
-        $this->assertDatabaseHas('activity_log', [
+        $this->assertDatabaseHas('activity_logs', [
             'event' => 'restored',
             'subject_id' => $user->id,
             'causer_id' => $admin->id,
@@ -274,7 +274,7 @@ class UserSoftDeleteTest extends TestCase
             'Authorization' => 'Bearer '.$token,
         ]);
 
-        $this->assertDatabaseHas('activity_log', [
+        $this->assertDatabaseHas('activity_logs', [
             'event' => 'force_deleted',
             'subject_id' => $userId,
             'causer_id' => $admin->id,

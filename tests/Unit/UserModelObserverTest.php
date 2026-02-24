@@ -25,7 +25,7 @@ class UserModelObserverTest extends TestCase
             'email' => 'newuser@example.com',
         ]);
 
-        $this->assertDatabaseCount('activity_log', 2);
+        $this->assertDatabaseCount('activity_logs', 2);
 
         $createdLog = ActivityLogModel::where('event', 'created')
             ->where('subject_id', $user->id)
@@ -36,9 +36,10 @@ class UserModelObserverTest extends TestCase
         $this->assertSame('created', $createdLog->event);
         $this->assertSame((string) $admin->id, (string) $createdLog->causer_id);
         $this->assertSame(UserModel::class, $createdLog->causer_type);
-        $this->assertArrayHasKey('name', $createdLog->properties ?? []);
-        $this->assertSame('New User', ($createdLog->properties ?? [])['name']);
-        $this->assertArrayNotHasKey('password', $createdLog->properties ?? []);
+        $this->assertNull($createdLog->old_values);
+        $this->assertArrayHasKey('name', $createdLog->new_values ?? []);
+        $this->assertSame('New User', ($createdLog->new_values ?? [])['name']);
+        $this->assertArrayNotHasKey('password', $createdLog->new_values ?? []);
     }
 
     public function test_updated_logs_activity_with_old_and_new_and_excludes_password(): void
@@ -50,7 +51,7 @@ class UserModelObserverTest extends TestCase
         $originalId = $user->id;
 
         ActivityLogModel::query()->delete();
-        $this->assertDatabaseCount('activity_log', 0);
+        $this->assertDatabaseCount('activity_logs', 0);
 
         $user->name = 'New Name';
         $user->save();
@@ -62,12 +63,10 @@ class UserModelObserverTest extends TestCase
         $this->assertNotNull($updatedLog);
         $this->assertSame('updated', $updatedLog->event);
         $this->assertSame((string) $admin->id, (string) $updatedLog->causer_id);
-        $this->assertArrayHasKey('old', $updatedLog->properties ?? []);
-        $this->assertArrayHasKey('new', $updatedLog->properties ?? []);
-        $this->assertSame('Old Name', ($updatedLog->properties['old'])['name']);
-        $this->assertSame('New Name', ($updatedLog->properties['new'])['name']);
-        $this->assertArrayNotHasKey('password', $updatedLog->properties['old'] ?? []);
-        $this->assertArrayNotHasKey('password', $updatedLog->properties['new'] ?? []);
+        $this->assertSame('Old Name', ($updatedLog->old_values ?? [])['name']);
+        $this->assertSame('New Name', ($updatedLog->new_values ?? [])['name']);
+        $this->assertArrayNotHasKey('password', $updatedLog->old_values ?? []);
+        $this->assertArrayNotHasKey('password', $updatedLog->new_values ?? []);
     }
 
     public function test_updated_skips_logging_when_no_meaningful_changes(): void
@@ -77,11 +76,11 @@ class UserModelObserverTest extends TestCase
 
         $user = UserModel::factory()->create(['name' => 'Same', 'email' => 'same@example.com']);
         ActivityLogModel::query()->delete();
-        $this->assertDatabaseCount('activity_log', 0);
+        $this->assertDatabaseCount('activity_logs', 0);
 
         $user->touch();
 
-        $this->assertDatabaseCount('activity_log', 0);
+        $this->assertDatabaseCount('activity_logs', 0);
     }
 
     public function test_deleted_logs_activity_with_subject_and_causer(): void
@@ -92,7 +91,7 @@ class UserModelObserverTest extends TestCase
         $user = UserModel::factory()->create(['name' => 'To Delete']);
         $userId = $user->id;
         ActivityLogModel::query()->delete();
-        $this->assertDatabaseCount('activity_log', 0);
+        $this->assertDatabaseCount('activity_logs', 0);
 
         $user->delete();
 
@@ -132,8 +131,8 @@ class UserModelObserverTest extends TestCase
 
         UserModel::factory()->create();
 
-        $this->assertSame(1, Cache::get('version:users'));
-        $this->assertSame(1, Cache::get('version:activity-logs'));
+        $this->assertEquals(1, Cache::get('version:users'));
+        $this->assertEquals(1, Cache::get('version:activity-logs'));
     }
 
     public function test_updated_with_changes_increments_version_users_and_activity_logs(): void
@@ -145,8 +144,8 @@ class UserModelObserverTest extends TestCase
         $user->name = 'After';
         $user->save();
 
-        $this->assertSame(1, Cache::get('version:users'));
-        $this->assertSame(1, Cache::get('version:activity-logs'));
+        $this->assertEquals(1, Cache::get('version:users'));
+        $this->assertEquals(1, Cache::get('version:activity-logs'));
     }
 
     public function test_updated_without_meaningful_changes_does_not_increment_versions(): void
@@ -158,8 +157,8 @@ class UserModelObserverTest extends TestCase
         // touch() only updates updated_at which is filtered out — no meaningful change
         $user->touch();
 
-        $this->assertSame(0, Cache::get('version:users'));
-        $this->assertSame(0, Cache::get('version:activity-logs'));
+        $this->assertEquals(0, Cache::get('version:users'));
+        $this->assertEquals(0, Cache::get('version:activity-logs'));
     }
 
     public function test_deleted_increments_version_users_and_activity_logs(): void
@@ -170,8 +169,8 @@ class UserModelObserverTest extends TestCase
 
         $user->delete();
 
-        $this->assertSame(1, Cache::get('version:users'));
-        $this->assertSame(1, Cache::get('version:activity-logs'));
+        $this->assertEquals(1, Cache::get('version:users'));
+        $this->assertEquals(1, Cache::get('version:activity-logs'));
     }
 
     public function test_restored_increments_version_users_and_activity_logs(): void
@@ -184,8 +183,8 @@ class UserModelObserverTest extends TestCase
         UserModel::withTrashed()->find($user->id)->restore();
 
         // restore() fires both `updated` (deleted_at → null) and `restored` → 2 increments each
-        $this->assertSame(2, Cache::get('version:users'));
-        $this->assertSame(2, Cache::get('version:activity-logs'));
+        $this->assertEquals(2, Cache::get('version:users'));
+        $this->assertEquals(2, Cache::get('version:activity-logs'));
     }
 
     public function test_force_deleted_increments_version_users_and_activity_logs(): void
@@ -198,7 +197,7 @@ class UserModelObserverTest extends TestCase
         UserModel::withTrashed()->find($user->id)->forceDelete();
 
         // forceDelete() fires both `deleted` and `forceDeleted` → 2 increments each
-        $this->assertSame(2, Cache::get('version:users'));
-        $this->assertSame(2, Cache::get('version:activity-logs'));
+        $this->assertEquals(2, Cache::get('version:users'));
+        $this->assertEquals(2, Cache::get('version:activity-logs'));
     }
 }

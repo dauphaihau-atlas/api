@@ -22,7 +22,7 @@ class UserModelObserver
     {
         Cache::tags(['users'])->flush();
         Cache::increment('version:users');
-        $this->log('created', $model, $this->safeSnapshot($model));
+        $this->log('created', $model, oldValues: null, newValues: $this->safeSnapshot($model));
     }
 
     public function updated(UserModel $model): void
@@ -32,31 +32,31 @@ class UserModelObserver
             return;
         }
         Cache::increment('version:users');
-        $this->log('updated', $model, $changes);
+        $this->log('updated', $model, oldValues: $changes['old'], newValues: $changes['new']);
     }
 
     public function deleted(UserModel $model): void
     {
         Cache::tags(['users'])->flush();
         Cache::increment('version:users');
-        $this->log('deleted', $model, null);
+        $this->log('deleted', $model, oldValues: $this->safeSnapshot($model), newValues: null);
     }
 
     public function restored(UserModel $model): void
     {
         Cache::tags(['users'])->flush();
         Cache::increment('version:users');
-        $this->log('restored', $model, $this->safeSnapshot($model));
+        $this->log('restored', $model, oldValues: null, newValues: $this->safeSnapshot($model));
     }
 
     public function forceDeleted(UserModel $model): void
     {
         Cache::tags(['users'])->flush();
         Cache::increment('version:users');
-        $this->log('force_deleted', $model, null);
+        $this->log('force_deleted', $model, oldValues: $this->safeSnapshot($model), newValues: null);
     }
 
-    private function log(string $event, UserModel $model, ?array $properties): void
+    private function log(string $event, UserModel $model, ?array $oldValues, ?array $newValues): void
     {
         $causer = Auth::user();
 
@@ -67,13 +67,14 @@ class UserModelObserver
             'subject_id' => $model->getKey(),
             'causer_type' => $causer !== null ? $causer->getMorphClass() : null,
             'causer_id' => $causer?->getAuthIdentifier(),
-            'properties' => $properties,
+            'old_values' => $oldValues,
+            'new_values' => $newValues,
         ]);
         Cache::increment('version:activity-logs');
     }
 
     /**
-     * Safe snapshot for created/deleted: only non-sensitive attributes.
+     * Safe snapshot: only non-sensitive attributes.
      *
      * @return array<string, mixed>
      */
@@ -92,7 +93,7 @@ class UserModelObserver
     /**
      * For updated: old and new values for changed attributes only, excluding sensitive ones.
      *
-     * @return array{old?: array<string, mixed>, new?: array<string, mixed>}|array{}
+     * @return array{old: array<string, mixed>, new: array<string, mixed>}|array{}
      */
     private function getSafeChanges(UserModel $model): array
     {

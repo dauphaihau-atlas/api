@@ -33,7 +33,7 @@ class ActivityLogTest extends TestCase
         $userId = $response->json('data.id');
         $this->assertNotNull($userId);
 
-        $this->assertDatabaseCount('activity_log', 1);
+        $this->assertDatabaseCount('activity_logs', 1);
 
         $log = ActivityLogModel::where('event', 'created')
             ->where('subject_id', $userId)
@@ -44,6 +44,6 @@ class ActivityLogTest extends TestCase
         $this->assertSame('created', $log->event);
         $this->assertSame((string) $admin->id, (string) $log->causer_id);
         $this->assertSame(UserModel::class, $log->causer_type);
-        $this->assertArrayNotHasKey('password', $log->properties ?? []);
+        $this->assertArrayNotHasKey('password', $log->new_values ?? []);
     }
 }

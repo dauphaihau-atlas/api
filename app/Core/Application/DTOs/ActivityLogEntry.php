@@ -21,5 +21,9 @@ final readonly class ActivityLogEntry
         public DateTimeInterface $createdAt,
         public ?string $causerName = null,
         public ?string $causerEmail = null,
+        /** @var array<string, mixed>|null */
+        public ?array $oldValues = null,
+        /** @var array<string, mixed>|null */
+        public ?array $newValues = null,
     ) {}
 }
