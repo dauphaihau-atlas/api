@@ -7,10 +7,11 @@ use App\Exceptions\ValidationException;
 use App\Presentation\Http\Middleware\AuthorizeActivityLog;
 use App\Presentation\Http\Middleware\AuthorizeUser;
 use App\Presentation\Http\Middleware\CacheControlMiddleware;
+use App\Presentation\Http\Middleware\DeprecatedApiVersion;
 use App\Presentation\Http\Middleware\LogApiRequests;
 use App\Presentation\Http\Middleware\RateLimitMiddleware;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -50,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'log.api' => LogApiRequests::class,
             'cache.control' => CacheControlMiddleware::class,
             'throttle.api' => RateLimitMiddleware::class,
+            'deprecated.api' => DeprecatedApiVersion::class,
             'authorize.user' => AuthorizeUser::class,
             'authorize.activity_log' => AuthorizeActivityLog::class,
         ]);

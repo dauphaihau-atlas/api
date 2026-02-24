@@ -73,6 +73,10 @@ Route::get('health', function (): JsonResponse {
     ], Response::HTTP_OK);
 });
 
-Route::prefix('v1')->middleware('throttle.api')->group(function (): void {
+Route::prefix('v1')->middleware(['throttle.api', 'deprecated.api'])->group(function (): void {
     require base_path('routes/api/v1.php');
+});
+
+Route::prefix('v2')->middleware('throttle.api')->group(function (): void {
+    require base_path('routes/api/v2.php');
 });
