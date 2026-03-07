@@ -6,6 +6,7 @@ use App\Core\Application\UseCases\User\ExportUsers\ExportUsersRequest;
 use App\Core\Application\UseCases\User\ExportUsers\ExportUsersUseCase;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentUserRepository;
+use App\Infrastructure\Tenant\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -20,7 +21,7 @@ class ExportUsersUseCaseTest extends TestCase
     {
         parent::setUp();
         Storage::fake(config('filesystems.exports_disk', 'local'));
-        $this->useCase = new ExportUsersUseCase(new EloquentUserRepository);
+        $this->useCase = new ExportUsersUseCase(new EloquentUserRepository(new TenantContext));
     }
 
     /**

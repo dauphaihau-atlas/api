@@ -15,8 +15,7 @@ class ActivityLogTest extends TestCase
 
     public function test_creating_user_via_api_logs_activity_with_causer(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         ActivityLogModel::query()->delete();
 
@@ -25,9 +24,7 @@ class ActivityLogTest extends TestCase
             'email' => 'apiuser@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-        ], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        ], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(201);
         $userId = $response->json('data.id');

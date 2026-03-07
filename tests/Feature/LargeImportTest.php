@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersRequest;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersUseCase;
+use App\Core\Domain\Entities\Tenant;
+use App\Infrastructure\Persistence\Eloquent\Models\TenantModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserImportModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use App\Infrastructure\Tenant\TenantContext;
 use App\Jobs\ProcessImportChunk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +35,16 @@ class LargeImportTest extends TestCase
 
         // Use database queue (real dispatch) — Queue::fake() would OOM storing 2000 job objects
         config(['queue.default' => 'database']);
+
+        $tenant = TenantModel::factory()->create();
+
+        // Seed the TenantContext so the use case can read the tenant ID
+        $tenantContext = app(TenantContext::class);
+        $tenantContext->set(new Tenant(
+            id: $tenant->id,
+            name: $tenant->name,
+            slug: $tenant->slug,
+        ));
 
         $useCase = app(ImportUsersUseCase::class);
 
@@ -90,7 +103,10 @@ class LargeImportTest extends TestCase
 
         $this->assertCount(10, $rows);
 
+        $tenant = TenantModel::factory()->create();
+
         $import = UserImportModel::create([
+            'tenant_id' => $tenant->id,
             'batch_id' => 'test-batch',
             'file_path' => 'imports/1m-users.csv',
             'status' => 'processing',

@@ -185,36 +185,27 @@ class UserPolicyTest extends TestCase
 
     public function test_users_index_returns_403_for_non_admin(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
 
-        $response = $this->getJson('/api/v1/users', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
 
     public function test_users_index_returns_200_for_admin(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/users', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
     }
 
     public function test_avatar_update_allowed_for_owner(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
 
-        $response = $this->postJson('/api/v1/users/'.$user->id.'/avatar', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->postJson('/api/v1/users/'.$user->id.'/avatar', [], $this->tenantHeaders($tenant, $token));
 
         // 422 means authorization passed but validation failed (no file)
         $response->assertStatus(422);
@@ -222,13 +213,10 @@ class UserPolicyTest extends TestCase
 
     public function test_avatar_update_denied_for_non_owner(): void
     {
-        $user = UserModel::factory()->create();
-        $other = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
+        $other = UserModel::factory()->forTenant($tenant)->create();
 
-        $response = $this->postJson('/api/v1/users/'.$other->id.'/avatar', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->postJson('/api/v1/users/'.$other->id.'/avatar', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }

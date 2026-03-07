@@ -14,15 +14,14 @@ class UserSearchTest extends TestCase
 
     public function test_search_users_by_name(): void
     {
-        $admin = UserModel::factory()->admin()->create(['name' => 'Admin Boss']);
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $admin->name = 'Admin Boss';
+        $admin->save();
 
-        UserModel::factory()->create(['name' => 'Alice Smith', 'email' => 'alice@example.com']);
-        UserModel::factory()->create(['name' => 'Bob Jones', 'email' => 'bob@example.com']);
+        UserModel::factory()->forTenant($tenant)->create(['name' => 'Alice Smith', 'email' => 'alice@example.com']);
+        UserModel::factory()->forTenant($tenant)->create(['name' => 'Bob Jones', 'email' => 'bob@example.com']);
 
-        $response = $this->getJson('/api/v1/users?search=Alice', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users?search=Alice', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
@@ -31,15 +30,14 @@ class UserSearchTest extends TestCase
 
     public function test_search_users_by_email(): void
     {
-        $admin = UserModel::factory()->admin()->create(['name' => 'Admin Boss']);
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $admin->name = 'Admin Boss';
+        $admin->save();
 
-        UserModel::factory()->create(['name' => 'Alice Smith', 'email' => 'alice@example.com']);
-        UserModel::factory()->create(['name' => 'Bob Jones', 'email' => 'bob@example.com']);
+        UserModel::factory()->forTenant($tenant)->create(['name' => 'Alice Smith', 'email' => 'alice@example.com']);
+        UserModel::factory()->forTenant($tenant)->create(['name' => 'Bob Jones', 'email' => 'bob@example.com']);
 
-        $response = $this->getJson('/api/v1/users?search=bob%40example', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users?search=bob%40example', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
@@ -48,14 +46,11 @@ class UserSearchTest extends TestCase
 
     public function test_search_users_returns_empty_for_no_match(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        UserModel::factory()->create(['name' => 'Alice Smith']);
+        UserModel::factory()->forTenant($tenant)->create(['name' => 'Alice Smith']);
 
-        $response = $this->getJson('/api/v1/users?search=nonexistent', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users?search=nonexistent', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(0, $response->json('meta.total'));
@@ -64,14 +59,11 @@ class UserSearchTest extends TestCase
 
     public function test_empty_search_returns_all_users(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        UserModel::factory()->count(3)->create();
+        UserModel::factory()->count(3)->forTenant($tenant)->create();
 
-        $response = $this->getJson('/api/v1/users?search=', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users?search=', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         // 3 created + 1 admin = 4
@@ -80,14 +72,11 @@ class UserSearchTest extends TestCase
 
     public function test_search_without_param_returns_all_users(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        UserModel::factory()->count(2)->create();
+        UserModel::factory()->count(2)->forTenant($tenant)->create();
 
-        $response = $this->getJson('/api/v1/users', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(3, $response->json('meta.total'));

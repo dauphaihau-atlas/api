@@ -39,16 +39,12 @@ class AvatarApiTest extends TestCase
      */
     public function test_me_avatar_returns_200_and_avatar_url_when_authenticated_with_valid_image(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
         $file = UploadedFile::fake()->image('avatar.jpg', 100, 100);
 
         $response = $this->post('/api/v1/me/avatar', [
             'avatar' => $file,
-        ], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        ], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['data' => ['id', 'name', 'email', 'avatar_url', 'created_at']]);
@@ -66,13 +62,9 @@ class AvatarApiTest extends TestCase
      */
     public function test_me_avatar_returns_422_when_file_missing_or_invalid(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
 
-        $response = $this->post('/api/v1/me/avatar', [], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->post('/api/v1/me/avatar', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(422);
     }
@@ -83,17 +75,13 @@ class AvatarApiTest extends TestCase
      */
     public function test_users_user_avatar_returns_403_when_authenticated_as_non_admin(): void
     {
-        $regularUser = UserModel::factory()->create();
-        $targetUser = UserModel::factory()->create();
-        $token = $regularUser->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $regularUser, 'token' => $token] = $this->createTenantWithUser();
+        $targetUser = UserModel::factory()->forTenant($tenant)->create();
         $file = UploadedFile::fake()->image('avatar.jpg', 100, 100);
 
         $response = $this->post("/api/v1/users/{$targetUser->id}/avatar", [
             'avatar' => $file,
-        ], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        ], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
@@ -104,17 +92,13 @@ class AvatarApiTest extends TestCase
      */
     public function test_users_user_avatar_returns_200_and_sets_avatar_when_authenticated_as_admin(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $targetUser = UserModel::factory()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $targetUser = UserModel::factory()->forTenant($tenant)->create();
         $file = UploadedFile::fake()->image('avatar.jpg', 100, 100);
 
         $response = $this->post("/api/v1/users/{$targetUser->id}/avatar", [
             'avatar' => $file,
-        ], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        ], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['data' => ['id', 'name', 'email', 'avatar_url', 'created_at']]);

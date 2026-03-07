@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,10 +23,9 @@ class ApiVersioningTest extends TestCase
 
     public function test_v1_responses_include_deprecation_header(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertHeader('Deprecation');
@@ -36,10 +34,9 @@ class ApiVersioningTest extends TestCase
 
     public function test_v1_responses_include_sunset_header(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertHeader('Sunset');
@@ -47,10 +44,9 @@ class ApiVersioningTest extends TestCase
 
     public function test_v1_responses_include_successor_version_link_header(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $linkHeader = $response->headers->get('Link');
@@ -60,10 +56,12 @@ class ApiVersioningTest extends TestCase
 
     public function test_v2_responses_do_not_include_deprecation_headers(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v2/users', [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ]);
 
         $response->assertStatus(200);
         $this->assertNull($response->headers->get('Deprecation'));
@@ -74,11 +72,10 @@ class ApiVersioningTest extends TestCase
 
     public function test_v1_and_v2_user_list_both_return_200(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $this->getJson('/api/v1/users', ['Authorization' => 'Bearer '.$token])->assertStatus(200);
-        $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token])->assertStatus(200);
+        $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token))->assertStatus(200);
+        $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json'])->assertStatus(200);
     }
 
     public function test_v2_user_list_requires_authentication(): void
@@ -88,20 +85,18 @@ class ApiVersioningTest extends TestCase
 
     public function test_v2_user_list_requires_admin_role(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
 
-        $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token])->assertStatus(403);
+        $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json'])->assertStatus(403);
     }
 
     // ── Transformation layer — shape differences ─────────────────────────────
 
     public function test_v1_user_list_returns_avatar_url_as_string(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $user = $response->json('data.0');
@@ -111,10 +106,9 @@ class ApiVersioningTest extends TestCase
 
     public function test_v2_user_list_returns_avatar_as_object(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json']);
 
         $response->assertStatus(200);
         $user = $response->json('data.0');
@@ -126,10 +120,9 @@ class ApiVersioningTest extends TestCase
 
     public function test_v1_roles_are_an_array_of_strings(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $roles = $response->json('data.0.roles');
@@ -139,10 +132,9 @@ class ApiVersioningTest extends TestCase
 
     public function test_v2_roles_are_an_array_of_objects(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json']);
 
         $response->assertStatus(200);
         $roles = $response->json('data.0.roles');
@@ -153,10 +145,9 @@ class ApiVersioningTest extends TestCase
 
     public function test_v2_response_includes_updated_at(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json']);
 
         $response->assertStatus(200);
         $user = $response->json('data.0');
@@ -165,10 +156,9 @@ class ApiVersioningTest extends TestCase
 
     public function test_v1_created_at_uses_legacy_format(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $createdAt = $response->json('data.0.created_at');
@@ -178,10 +168,9 @@ class ApiVersioningTest extends TestCase
 
     public function test_v2_created_at_uses_iso8601_format(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token]);
+        $response = $this->getJson('/api/v2/users', ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json']);
 
         $response->assertStatus(200);
         $createdAt = $response->json('data.0.created_at');
@@ -193,14 +182,13 @@ class ApiVersioningTest extends TestCase
 
     public function test_v2_store_creates_user_and_returns_v2_shape(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         $response = $this->postJson('/api/v2/users', [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'password' => 'password123',
-        ], ['Authorization' => 'Bearer '.$token]);
+        ], ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json']);
 
         $response->assertStatus(201);
         $data = $response->json('data');

@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Infrastructure\Persistence\Eloquent\Models\UserImportModel;
-use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Jobs\ProcessImportChunk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -36,63 +35,47 @@ class UserImportApiTest extends TestCase
 
     public function test_users_import_returns_403_when_authenticated_as_non_admin(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
         $csv = "name,email,password\nAlice,alice@example.com,password123";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
 
         $response = $this->post('/api/v1/users/import', [
             'file' => $file,
-        ], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        ], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
 
     public function test_users_import_returns_422_when_file_missing_or_invalid(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->post('/api/v1/users/import', [], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->post('/api/v1/users/import', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(422);
     }
 
     public function test_users_import_returns_422_when_file_is_not_csv(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
         $file = UploadedFile::fake()->image('photo.jpg', 100, 100);
 
         $response = $this->post('/api/v1/users/import', [
             'file' => $file,
-        ], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        ], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(422);
     }
 
     public function test_users_import_returns_202_and_dispatches_jobs(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
         $csv = "name,email,password\nAlice One,alice@example.com,password123\nBob Two,bob@example.com,secret456";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
 
         $response = $this->post('/api/v1/users/import', [
             'file' => $file,
-        ], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        ], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(202);
         $response->assertJsonStructure(['data' => ['id', 'status'], 'message']);
@@ -115,17 +98,13 @@ class UserImportApiTest extends TestCase
 
     public function test_users_import_returns_422_for_invalid_headers(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
         $csv = "foo,bar\nAlice,alice@example.com";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
 
         $response = $this->post('/api/v1/users/import', [
             'file' => $file,
-        ], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        ], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(422);
         $this->assertStringContainsString('headers', strtolower($response->json('message')));
@@ -133,10 +112,10 @@ class UserImportApiTest extends TestCase
 
     public function test_import_status_returns_progress(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         $import = UserImportModel::create([
+            'tenant_id' => $tenant->id,
             'batch_id' => 'test-batch-id',
             'file_path' => 'imports/test.csv',
             'status' => 'processing',
@@ -148,10 +127,7 @@ class UserImportApiTest extends TestCase
             'started_at' => now(),
         ]);
 
-        $response = $this->get("/api/v1/users/import/{$import->id}/status", [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->get("/api/v1/users/import/{$import->id}/status", $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -167,13 +143,9 @@ class UserImportApiTest extends TestCase
 
     public function test_import_status_returns_404_for_nonexistent_import(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->get('/api/v1/users/import/999/status', [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->get('/api/v1/users/import/999/status', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(404);
     }
@@ -187,23 +159,19 @@ class UserImportApiTest extends TestCase
 
     public function test_import_status_returns_403_when_non_admin(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
 
-        $response = $this->get('/api/v1/users/import/1/status', [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->get('/api/v1/users/import/1/status', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
 
     public function test_cancel_import_returns_200_when_processing(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         $import = UserImportModel::create([
+            'tenant_id' => $tenant->id,
             'batch_id' => 'test-batch-cancel',
             'file_path' => 'imports/test.csv',
             'status' => 'processing',
@@ -215,10 +183,7 @@ class UserImportApiTest extends TestCase
             'started_at' => now(),
         ]);
 
-        $response = $this->delete("/api/v1/users/import/{$import->id}", [], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->delete("/api/v1/users/import/{$import->id}", [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.status', 'cancelled');
@@ -228,10 +193,10 @@ class UserImportApiTest extends TestCase
 
     public function test_cancel_import_returns_200_when_pending(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         $import = UserImportModel::create([
+            'tenant_id' => $tenant->id,
             'batch_id' => 'test-batch-pending',
             'file_path' => 'imports/test.csv',
             'status' => 'pending',
@@ -242,10 +207,7 @@ class UserImportApiTest extends TestCase
             'errors' => [],
         ]);
 
-        $response = $this->delete("/api/v1/users/import/{$import->id}", [], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->delete("/api/v1/users/import/{$import->id}", [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.status', 'cancelled');
@@ -254,23 +216,19 @@ class UserImportApiTest extends TestCase
 
     public function test_cancel_import_returns_404_for_nonexistent_import(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->delete('/api/v1/users/import/999', [], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->delete('/api/v1/users/import/999', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(404);
     }
 
     public function test_cancel_import_returns_409_when_already_completed(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         $import = UserImportModel::create([
+            'tenant_id' => $tenant->id,
             'batch_id' => 'test-batch-done',
             'file_path' => 'imports/test.csv',
             'status' => 'completed',
@@ -282,10 +240,7 @@ class UserImportApiTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        $response = $this->delete("/api/v1/users/import/{$import->id}", [], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->delete("/api/v1/users/import/{$import->id}", [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(409);
     }
@@ -299,13 +254,9 @@ class UserImportApiTest extends TestCase
 
     public function test_cancel_import_returns_403_when_non_admin(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
 
-        $response = $this->delete('/api/v1/users/import/1', [], [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->delete('/api/v1/users/import/1', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }

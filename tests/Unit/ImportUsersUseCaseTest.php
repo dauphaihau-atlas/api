@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersRequest;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersUseCase;
 use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentUserImportRepository;
+use App\Infrastructure\Tenant\TenantContext;
 use App\Jobs\ProcessImportChunk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -23,7 +24,8 @@ class ImportUsersUseCaseTest extends TestCase
         Storage::fake(config('filesystems.imports_disk', 'local'));
         Queue::fake();
         $this->useCase = new ImportUsersUseCase(
-            new EloquentUserImportRepository
+            new EloquentUserImportRepository(new TenantContext),
+            new TenantContext,
         );
     }
 

@@ -15,12 +15,9 @@ class ActivityLogApiTest extends TestCase
 
     public function test_list_activity_logs_returns_403_for_regular_user(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
 
-        $response = $this->getJson('/api/v1/activity-logs', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
@@ -34,12 +31,12 @@ class ActivityLogApiTest extends TestCase
 
     public function test_list_activity_logs_returns_200_and_data_for_admin(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         ActivityLogModel::query()->delete();
 
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -49,9 +46,7 @@ class ActivityLogApiTest extends TestCase
             'properties' => ['name' => 'Test', 'email' => 'test@example.com'],
         ]);
 
-        $response = $this->getJson('/api/v1/activity-logs', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -79,10 +74,10 @@ class ActivityLogApiTest extends TestCase
 
     public function test_list_activity_logs_respects_event_filter(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -92,6 +87,7 @@ class ActivityLogApiTest extends TestCase
             'properties' => null,
         ]);
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'updated',
             'subject_type' => UserModel::class,
@@ -101,9 +97,7 @@ class ActivityLogApiTest extends TestCase
             'properties' => null,
         ]);
 
-        $response = $this->getJson('/api/v1/activity-logs?event=updated', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs?event=updated', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
@@ -112,22 +106,19 @@ class ActivityLogApiTest extends TestCase
 
     public function test_show_activity_log_returns_404_for_missing_id(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/activity-logs/99999', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs/99999', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(404);
     }
 
     public function test_show_activity_log_returns_403_for_regular_user(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
 
         $log = ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -137,19 +128,17 @@ class ActivityLogApiTest extends TestCase
             'properties' => null,
         ]);
 
-        $response = $this->getJson('/api/v1/activity-logs/'.$log->id, [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs/'.$log->id, $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
 
     public function test_show_activity_log_returns_200_and_data_for_admin(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         $log = ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -159,9 +148,7 @@ class ActivityLogApiTest extends TestCase
             'properties' => ['name' => 'New User', 'email' => 'new@example.com'],
         ]);
 
-        $response = $this->getJson('/api/v1/activity-logs/'.$log->id, [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs/'.$log->id, $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $log->id);
@@ -172,13 +159,13 @@ class ActivityLogApiTest extends TestCase
 
     public function test_user_activity_logs_returns_activity_for_that_user_as_subject(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $targetUser = UserModel::factory()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $targetUser = UserModel::factory()->forTenant($tenant)->create();
 
         ActivityLogModel::query()->delete();
 
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -188,6 +175,7 @@ class ActivityLogApiTest extends TestCase
             'properties' => null,
         ]);
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -197,9 +185,7 @@ class ActivityLogApiTest extends TestCase
             'properties' => null,
         ]);
 
-        $response = $this->getJson('/api/v1/users/'.$targetUser->id.'/activity-logs', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users/'.$targetUser->id.'/activity-logs', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));

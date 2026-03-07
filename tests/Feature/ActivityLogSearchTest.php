@@ -15,13 +15,15 @@ class ActivityLogSearchTest extends TestCase
 
     public function test_search_activity_logs_by_causer_name(): void
     {
-        $admin = UserModel::factory()->admin()->create(['name' => 'Admin Boss']);
-        $otherUser = UserModel::factory()->create(['name' => 'Charlie Delta']);
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $admin->name = 'Admin Boss';
+        $admin->save();
+        $otherUser = UserModel::factory()->forTenant($tenant)->create(['name' => 'Charlie Delta']);
 
         ActivityLogModel::query()->delete();
 
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -31,6 +33,7 @@ class ActivityLogSearchTest extends TestCase
             'properties' => null,
         ]);
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'updated',
             'subject_type' => UserModel::class,
@@ -40,9 +43,7 @@ class ActivityLogSearchTest extends TestCase
             'properties' => null,
         ]);
 
-        $response = $this->getJson('/api/v1/activity-logs?search=Charlie', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs?search=Charlie', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
@@ -51,12 +52,12 @@ class ActivityLogSearchTest extends TestCase
 
     public function test_search_activity_logs_by_event(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         ActivityLogModel::query()->delete();
 
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -66,6 +67,7 @@ class ActivityLogSearchTest extends TestCase
             'properties' => null,
         ]);
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'deleted',
             'subject_type' => UserModel::class,
@@ -75,9 +77,7 @@ class ActivityLogSearchTest extends TestCase
             'properties' => null,
         ]);
 
-        $response = $this->getJson('/api/v1/activity-logs?search=deleted', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs?search=deleted', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
@@ -86,12 +86,12 @@ class ActivityLogSearchTest extends TestCase
 
     public function test_search_activity_logs_returns_empty_for_no_match(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         ActivityLogModel::query()->delete();
 
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -101,9 +101,7 @@ class ActivityLogSearchTest extends TestCase
             'properties' => null,
         ]);
 
-        $response = $this->getJson('/api/v1/activity-logs?search=nonexistent', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs?search=nonexistent', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(0, $response->json('meta.total'));
@@ -111,14 +109,16 @@ class ActivityLogSearchTest extends TestCase
 
     public function test_search_user_activity_logs(): void
     {
-        $admin = UserModel::factory()->admin()->create(['name' => 'Admin Boss']);
-        $targetUser = UserModel::factory()->create(['name' => 'Target User']);
-        $otherCauser = UserModel::factory()->create(['name' => 'Other Causer']);
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $admin->name = 'Admin Boss';
+        $admin->save();
+        $targetUser = UserModel::factory()->forTenant($tenant)->create(['name' => 'Target User']);
+        $otherCauser = UserModel::factory()->forTenant($tenant)->create(['name' => 'Other Causer']);
 
         ActivityLogModel::query()->delete();
 
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -128,6 +128,7 @@ class ActivityLogSearchTest extends TestCase
             'properties' => null,
         ]);
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'updated',
             'subject_type' => UserModel::class,
@@ -137,9 +138,7 @@ class ActivityLogSearchTest extends TestCase
             'properties' => null,
         ]);
 
-        $response = $this->getJson('/api/v1/users/'.$targetUser->id.'/activity-logs?search=Other', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users/'.$targetUser->id.'/activity-logs?search=Other', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
@@ -148,12 +147,12 @@ class ActivityLogSearchTest extends TestCase
 
     public function test_empty_search_returns_all_activity_logs(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
         ActivityLogModel::query()->delete();
 
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'created',
             'subject_type' => UserModel::class,
@@ -163,6 +162,7 @@ class ActivityLogSearchTest extends TestCase
             'properties' => null,
         ]);
         ActivityLogModel::create([
+            'tenant_id' => $tenant->id,
             'log_name' => 'default',
             'event' => 'updated',
             'subject_type' => UserModel::class,
@@ -172,9 +172,7 @@ class ActivityLogSearchTest extends TestCase
             'properties' => null,
         ]);
 
-        $response = $this->getJson('/api/v1/activity-logs?search=', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/activity-logs?search=', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(2, $response->json('meta.total'));

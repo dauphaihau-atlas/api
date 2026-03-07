@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -34,13 +33,9 @@ class UserExportApiTest extends TestCase
      */
     public function test_users_export_returns_403_when_authenticated_as_non_admin(): void
     {
-        $user = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
 
-        $response = $this->get('/api/v1/users/export', [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->get('/api/v1/users/export', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
@@ -51,13 +46,9 @@ class UserExportApiTest extends TestCase
      */
     public function test_users_export_returns_200_with_path_and_url_when_admin(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->get('/api/v1/users/export', [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $response = $this->get('/api/v1/users/export', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -79,21 +70,16 @@ class UserExportApiTest extends TestCase
      */
     public function test_signed_download_returns_csv_content(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $exportResponse = $this->get('/api/v1/users/export', [
-            'Authorization' => 'Bearer '.$token,
-            'Accept' => 'application/json',
-        ]);
+        $exportResponse = $this->get('/api/v1/users/export', $this->tenantHeaders($tenant, $token));
         $exportResponse->assertStatus(200);
         $url = $exportResponse->json('data.url');
         $this->assertNotEmpty($url);
 
-        $downloadResponse = $this->get($url, [
-            'Authorization' => 'Bearer '.$token,
+        $downloadResponse = $this->get($url, array_merge($this->tenantHeaders($tenant, $token), [
             'Accept' => 'text/csv',
-        ]);
+        ]));
 
         $downloadResponse->assertStatus(200);
         $this->assertStringContainsString('text/csv', $downloadResponse->headers->get('Content-Type') ?? '');

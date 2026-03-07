@@ -16,13 +16,10 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_admin_can_soft_delete_user(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $user = UserModel::factory()->forTenant($tenant)->create();
 
-        $response = $this->deleteJson('/api/v1/users/'.$user->id, [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->deleteJson('/api/v1/users/'.$user->id, [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonPath('message', 'User deleted successfully');
@@ -31,25 +28,19 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_non_admin_cannot_delete_user(): void
     {
-        $user = UserModel::factory()->create();
-        $target = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
+        $target = UserModel::factory()->forTenant($tenant)->create();
 
-        $response = $this->deleteJson('/api/v1/users/'.$target->id, [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->deleteJson('/api/v1/users/'.$target->id, [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
 
     public function test_delete_nonexistent_user_returns_404(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->deleteJson('/api/v1/users/99999', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->deleteJson('/api/v1/users/99999', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(404);
     }
@@ -58,14 +49,11 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_soft_deleted_users_hidden_by_default(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create();
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $user = UserModel::factory()->forTenant($tenant)->create();
         $user->delete();
-        $token = $admin->createToken('test')->plainTextToken;
 
-        $response = $this->getJson('/api/v1/users', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $ids = array_column($response->json('data'), 'id');
@@ -74,15 +62,12 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_trashed_only_shows_soft_deleted_users(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $active = UserModel::factory()->create();
-        $deleted = UserModel::factory()->create();
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $active = UserModel::factory()->forTenant($tenant)->create();
+        $deleted = UserModel::factory()->forTenant($tenant)->create();
         $deleted->delete();
-        $token = $admin->createToken('test')->plainTextToken;
 
-        $response = $this->getJson('/api/v1/users?trashed=only', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users?trashed=only', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
@@ -92,15 +77,12 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_trashed_with_shows_all_users(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $active = UserModel::factory()->create();
-        $deleted = UserModel::factory()->create();
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $active = UserModel::factory()->forTenant($tenant)->create();
+        $deleted = UserModel::factory()->forTenant($tenant)->create();
         $deleted->delete();
-        $token = $admin->createToken('test')->plainTextToken;
 
-        $response = $this->getJson('/api/v1/users?trashed=with', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users?trashed=with', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         // admin + active + deleted = 3
@@ -109,12 +91,9 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_invalid_trashed_filter_returns_400(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/users?trashed=invalid', [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->getJson('/api/v1/users?trashed=invalid', $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(422);
     }
@@ -123,14 +102,11 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_admin_can_restore_soft_deleted_user(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create();
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $user = UserModel::factory()->forTenant($tenant)->create();
         $user->delete();
-        $token = $admin->createToken('test')->plainTextToken;
 
-        $response = $this->postJson('/api/v1/users/'.$user->id.'/restore', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->postJson('/api/v1/users/'.$user->id.'/restore', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonPath('message', 'User restored successfully');
@@ -143,26 +119,20 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_non_admin_cannot_restore_user(): void
     {
-        $user = UserModel::factory()->create();
-        $target = UserModel::factory()->create();
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
+        $target = UserModel::factory()->forTenant($tenant)->create();
         $target->delete();
-        $token = $user->createToken('test')->plainTextToken;
 
-        $response = $this->postJson('/api/v1/users/'.$target->id.'/restore', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->postJson('/api/v1/users/'.$target->id.'/restore', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
 
     public function test_restore_nonexistent_trashed_user_returns_404(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->postJson('/api/v1/users/99999/restore', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->postJson('/api/v1/users/99999/restore', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(404);
     }
@@ -171,14 +141,11 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_admin_can_force_delete_user(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create();
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $user = UserModel::factory()->forTenant($tenant)->create();
         $userId = $user->id;
-        $token = $admin->createToken('test')->plainTextToken;
 
-        $response = $this->deleteJson('/api/v1/users/'.$userId.'/force', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->deleteJson('/api/v1/users/'.$userId.'/force', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $response->assertJsonPath('message', 'User permanently deleted');
@@ -187,15 +154,12 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_admin_can_force_delete_soft_deleted_user(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create();
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $user = UserModel::factory()->forTenant($tenant)->create();
         $userId = $user->id;
         $user->delete();
-        $token = $admin->createToken('test')->plainTextToken;
 
-        $response = $this->deleteJson('/api/v1/users/'.$userId.'/force', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->deleteJson('/api/v1/users/'.$userId.'/force', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('users', ['id' => $userId]);
@@ -203,25 +167,19 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_non_admin_cannot_force_delete_user(): void
     {
-        $user = UserModel::factory()->create();
-        $target = UserModel::factory()->create();
-        $token = $user->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
+        $target = UserModel::factory()->forTenant($tenant)->create();
 
-        $response = $this->deleteJson('/api/v1/users/'.$target->id.'/force', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->deleteJson('/api/v1/users/'.$target->id.'/force', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(403);
     }
 
     public function test_force_delete_nonexistent_user_returns_404(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
 
-        $response = $this->deleteJson('/api/v1/users/99999/force', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $response = $this->deleteJson('/api/v1/users/99999/force', [], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(404);
     }
@@ -230,13 +188,10 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_soft_delete_creates_activity_log(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create();
-        $token = $admin->createToken('test')->plainTextToken;
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $user = UserModel::factory()->forTenant($tenant)->create();
 
-        $this->deleteJson('/api/v1/users/'.$user->id, [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $this->deleteJson('/api/v1/users/'.$user->id, [], $this->tenantHeaders($tenant, $token));
 
         $this->assertDatabaseHas('activity_logs', [
             'event' => 'deleted',
@@ -247,14 +202,11 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_restore_creates_activity_log(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create();
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $user = UserModel::factory()->forTenant($tenant)->create();
         $user->delete();
-        $token = $admin->createToken('test')->plainTextToken;
 
-        $this->postJson('/api/v1/users/'.$user->id.'/restore', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $this->postJson('/api/v1/users/'.$user->id.'/restore', [], $this->tenantHeaders($tenant, $token));
 
         $this->assertDatabaseHas('activity_logs', [
             'event' => 'restored',
@@ -265,14 +217,11 @@ class UserSoftDeleteTest extends TestCase
 
     public function test_force_delete_creates_activity_log(): void
     {
-        $admin = UserModel::factory()->admin()->create();
-        $user = UserModel::factory()->create();
+        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $user = UserModel::factory()->forTenant($tenant)->create();
         $userId = $user->id;
-        $token = $admin->createToken('test')->plainTextToken;
 
-        $this->deleteJson('/api/v1/users/'.$userId.'/force', [], [
-            'Authorization' => 'Bearer '.$token,
-        ]);
+        $this->deleteJson('/api/v1/users/'.$userId.'/force', [], $this->tenantHeaders($tenant, $token));
 
         $this->assertDatabaseHas('activity_logs', [
             'event' => 'force_deleted',
