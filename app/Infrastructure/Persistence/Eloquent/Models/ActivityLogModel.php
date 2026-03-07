@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence\Eloquent\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ActivityLogModel extends Model
@@ -12,6 +13,7 @@ class ActivityLogModel extends Model
     protected $table = 'activity_logs';
 
     protected $fillable = [
+        'tenant_id',
         'log_name',
         'event',
         'subject_type',
@@ -30,6 +32,11 @@ class ActivityLogModel extends Model
             'old_values' => 'array',
             'new_values' => 'array',
         ];
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(TenantModel::class, 'tenant_id');
     }
 
     /**

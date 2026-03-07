@@ -5,11 +5,14 @@ use App\Exceptions\ApiException;
 use App\Exceptions\ForbiddenException;
 use App\Exceptions\ValidationException;
 use App\Presentation\Http\Middleware\AuthorizeActivityLog;
+use App\Presentation\Http\Middleware\AuthorizeTenant;
 use App\Presentation\Http\Middleware\AuthorizeUser;
 use App\Presentation\Http\Middleware\CacheControlMiddleware;
 use App\Presentation\Http\Middleware\DeprecatedApiVersion;
 use App\Presentation\Http\Middleware\LogApiRequests;
 use App\Presentation\Http\Middleware\RateLimitMiddleware;
+use App\Presentation\Http\Middleware\ResolveTenant;
+use App\Presentation\Http\Middleware\ResolveTenantOptional;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
@@ -54,6 +57,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'deprecated.api' => DeprecatedApiVersion::class,
             'authorize.user' => AuthorizeUser::class,
             'authorize.activity_log' => AuthorizeActivityLog::class,
+            'resolve.tenant' => ResolveTenant::class,
+            'resolve.tenant.optional' => ResolveTenantOptional::class,
+            'authorize.tenant' => AuthorizeTenant::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -14,6 +14,7 @@ class User
         private ?string $password = null,
         private ?string $avatarPath = null,
         private array $roles = [],
+        private ?int $tenantId = null,
         private ?DateTimeImmutable $createdAt = null,
         private ?DateTimeImmutable $updatedAt = null,
         private ?DateTimeImmutable $deletedAt = null
@@ -74,6 +75,16 @@ class User
         }
 
         return false;
+    }
+
+    public function getTenantId(): ?int
+    {
+        return $this->tenantId;
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('super_admin');
     }
 
     public function getDeletedAt(): ?DateTimeImmutable

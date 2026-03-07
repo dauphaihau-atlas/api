@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Infrastructure\Persistence\Eloquent\Models\RoleModel;
+use App\Infrastructure\Persistence\Eloquent\Models\TenantModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -42,6 +43,21 @@ class UserModelFactory extends Factory
             $role = RoleModel::where('slug', 'user')->firstOrFail();
             $user->roles()->attach($role);
         });
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->afterCreating(function (UserModel $user) {
+            $role = RoleModel::where('slug', 'super_admin')->firstOrFail();
+            $user->roles()->attach($role);
+        });
+    }
+
+    public function forTenant(TenantModel $tenant): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'tenant_id' => $tenant->id,
+        ]);
     }
 
     public function unverified(): static

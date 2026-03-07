@@ -16,6 +16,7 @@ class UserImport
         private int $createdCount = 0,
         private int $updatedCount = 0,
         private array $errors = [],
+        private ?int $tenantId = null,
         private ?DateTimeImmutable $startedAt = null,
         private ?DateTimeImmutable $completedAt = null,
         private ?DateTimeImmutable $createdAt = null,
@@ -71,6 +72,11 @@ class UserImport
     public function getErrors(): array
     {
         return $this->errors;
+    }
+
+    public function getTenantId(): ?int
+    {
+        return $this->tenantId;
     }
 
     public function getStartedAt(): ?DateTimeImmutable

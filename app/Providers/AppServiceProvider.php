@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
+use App\Infrastructure\Persistence\Eloquent\Models\TenantModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Infrastructure\Persistence\Eloquent\Observers\UserModelObserver;
 use App\Presentation\Http\Policies\ActivityLogPolicy;
+use App\Presentation\Http\Policies\TenantPolicy;
 use App\Presentation\Http\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -41,11 +43,16 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('admin', function ($user) {
-            return $user !== null && $user->hasRole('admin');
+            return $user !== null && ($user->hasRole('admin') || $user->hasRole('super_admin'));
+        });
+
+        Gate::define('super_admin', function ($user) {
+            return $user !== null && $user->hasRole('super_admin');
         });
 
         Gate::policy(UserModel::class, UserPolicy::class);
         Gate::policy(ActivityLogModel::class, ActivityLogPolicy::class);
+        Gate::policy(TenantModel::class, TenantPolicy::class);
 
         UserModel::observe(UserModelObserver::class);
     }

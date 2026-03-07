@@ -5,14 +5,20 @@ namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Domain\Entities\UserImport;
 use App\Infrastructure\Persistence\Eloquent\Models\UserImportModel;
+use App\Infrastructure\Tenant\TenantContext;
 use Illuminate\Support\Facades\DB;
 
 class EloquentUserImportRepository implements UserImportRepositoryInterface
 {
+    public function __construct(
+        private readonly TenantContext $tenantContext
+    ) {}
+
     public function save(UserImport $import): UserImport
     {
         if ($import->getId() === null) {
             $model = new UserImportModel;
+            $model->tenant_id = $this->tenantContext->getTenantId();
         } else {
             $model = UserImportModel::findOrFail($import->getId());
         }
@@ -85,6 +91,7 @@ class EloquentUserImportRepository implements UserImportRepositoryInterface
             createdCount: $model->created_count,
             updatedCount: $model->updated_count,
             errors: $model->errors ?? [],
+            tenantId: $model->tenant_id,
             startedAt: $model->started_at?->toDateTimeImmutable(),
             completedAt: $model->completed_at?->toDateTimeImmutable(),
             createdAt: $model->created_at?->toDateTimeImmutable(),

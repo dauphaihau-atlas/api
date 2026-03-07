@@ -6,11 +6,16 @@ namespace App\Infrastructure\Persistence\Eloquent\Observers;
 
 use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use App\Infrastructure\Tenant\TenantContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
 class UserModelObserver
 {
+    public function __construct(
+        private readonly TenantContext $tenantContext
+    ) {}
+
     private const LOG_NAME = 'default';
 
     /**
@@ -61,6 +66,7 @@ class UserModelObserver
         $causer = Auth::user();
 
         ActivityLogModel::create([
+            'tenant_id' => $this->tenantContext->getTenantId(),
             'log_name' => self::LOG_NAME,
             'event' => $event,
             'subject_type' => $model->getMorphClass(),

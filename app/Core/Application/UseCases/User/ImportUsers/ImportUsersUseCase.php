@@ -4,6 +4,7 @@ namespace App\Core\Application\UseCases\User\ImportUsers;
 
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Domain\Entities\UserImport;
+use App\Infrastructure\Tenant\TenantContext;
 use App\Jobs\ProcessImportChunk;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
@@ -19,7 +20,8 @@ class ImportUsersUseCase
     private const CHUNK_SIZE = 500;
 
     public function __construct(
-        private readonly UserImportRepositoryInterface $importRepository
+        private readonly UserImportRepositoryInterface $importRepository,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     public function execute(ImportUsersRequest $request): ImportUsersResponse
@@ -65,7 +67,8 @@ class ImportUsersUseCase
             batchId: Str::uuid()->toString(),
             filePath: $request->path,
             status: 'pending',
-            totalRows: $totalRows
+            totalRows: $totalRows,
+            tenantId: $this->tenantContext->getTenantId(),
         );
         $import = $this->importRepository->save($import);
         $importId = $import->getId();
@@ -139,7 +142,8 @@ class ImportUsersUseCase
                 $batch->add([new ProcessImportChunk(
                     importId: $importId,
                     rows: $currentChunk,
-                    startRowIndex: $chunkStartRow
+                    startRowIndex: $chunkStartRow,
+                    tenantId: $this->tenantContext->getTenantId(),
                 )]);
                 $currentChunk = [];
                 $chunkStartRow = $rowIndex + 1;

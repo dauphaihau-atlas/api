@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Core\Application\Contracts\ActivityLogRepositoryInterface;
+use App\Core\Application\Contracts\TenantRepositoryInterface;
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentActivityLogRepository;
+use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentTenantRepository;
 use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentUserImportRepository;
 use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentUserRepository;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +29,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ActivityLogRepositoryInterface::class,
             EloquentActivityLogRepository::class
+        );
+
+        $this->app->bind(
+            TenantRepositoryInterface::class,
+            EloquentTenantRepository::class
         );
     }
 

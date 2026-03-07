@@ -33,7 +33,8 @@ class ProcessImportChunk implements ShouldQueue
     public function __construct(
         public readonly int $importId,
         public readonly array $rows,
-        public readonly int $startRowIndex
+        public readonly int $startRowIndex,
+        public readonly ?int $tenantId = null,
     ) {}
 
     public function handle(
@@ -65,6 +66,7 @@ class ProcessImportChunk implements ShouldQueue
                 'name' => $name,
                 'email' => $email,
                 'password' => Hash::make($password),
+                'tenant_id' => $this->tenantId,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];

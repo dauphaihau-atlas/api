@@ -3,6 +3,7 @@
 namespace App\Infrastructure\Persistence\Eloquent\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -25,6 +26,7 @@ class UserModel extends Authenticatable
         'email',
         'password',
         'avatar_path',
+        'tenant_id',
     ];
 
     protected $hidden = [
@@ -38,6 +40,11 @@ class UserModel extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(TenantModel::class, 'tenant_id');
     }
 
     public function roles(): BelongsToMany

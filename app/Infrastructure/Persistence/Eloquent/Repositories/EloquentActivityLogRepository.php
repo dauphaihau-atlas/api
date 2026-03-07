@@ -9,17 +9,22 @@ use App\Core\Application\DTOs\ActivityLogEntry;
 use App\Core\Application\DTOs\ActivityLogFilters;
 use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use App\Infrastructure\Tenant\TenantContext;
 use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 
 class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
 {
+    public function __construct(
+        private readonly TenantContext $tenantContext
+    ) {}
+
     /**
      * @return ActivityLogEntry[]
      */
     public function findPaginated(ActivityLogFilters $filters, int $page, int $perPage): array
     {
-        $query = $this->applyFilters(ActivityLogModel::query()->with('causer'), $filters);
+        $query = $this->applyFilters($this->applyTenantScope(ActivityLogModel::query()->with('causer')), $filters);
 
         $sortColumn = $filters->sort !== '' && str_starts_with($filters->sort, '-')
             ? substr($filters->sort, 1)
@@ -41,14 +46,24 @@ class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
 
     public function count(ActivityLogFilters $filters): int
     {
-        return $this->applyFilters(ActivityLogModel::query(), $filters)->count();
+        return $this->applyFilters($this->applyTenantScope(ActivityLogModel::query()), $filters)->count();
     }
 
     public function findById(int $id): ?ActivityLogEntry
     {
-        $model = ActivityLogModel::with('causer')->find($id);
+        $model = $this->applyTenantScope(ActivityLogModel::query()->with('causer'))->find($id);
 
         return $model !== null ? $this->toEntry($model) : null;
+    }
+
+    private function applyTenantScope(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        $tenantId = $this->tenantContext->getTenantId();
+        if ($tenantId !== null) {
+            $query->where('activity_logs.tenant_id', $tenantId);
+        }
+
+        return $query;
     }
 
     private function applyFilters(\Illuminate\Database\Eloquent\Builder $query, ActivityLogFilters $filters): \Illuminate\Database\Eloquent\Builder

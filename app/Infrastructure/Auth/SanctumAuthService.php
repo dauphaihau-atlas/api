@@ -32,7 +32,8 @@ class SanctumAuthService implements AuthServiceInterface
             id: $user->id,
             name: $user->name,
             email: $user->email,
-            createdAt: $createdAt
+            createdAt: $createdAt,
+            tenantId: $user->tenant_id,
         );
     }
 

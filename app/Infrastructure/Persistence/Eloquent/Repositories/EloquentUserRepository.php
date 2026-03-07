@@ -9,21 +9,26 @@ use App\Core\Domain\Entities\User;
 use App\Core\Domain\ValueObjects\Email;
 use App\Infrastructure\Persistence\Eloquent\Models\RoleModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
+use App\Infrastructure\Tenant\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class EloquentUserRepository implements UserRepositoryInterface
 {
+    public function __construct(
+        private readonly TenantContext $tenantContext
+    ) {}
+
     public function findById(int $id): ?User
     {
-        $model = UserModel::with('roles')->find($id);
+        $model = $this->applyTenantScope(UserModel::with('roles'))->find($id);
 
         return $model !== null ? $this->toEntity($model) : null;
     }
 
     public function findByEmail(string $email): ?User
     {
-        $model = UserModel::with('roles')->where('email', $email)->first();
+        $model = $this->applyTenantScope(UserModel::with('roles'))->where('email', $email)->first();
 
         return $model !== null ? $this->toEntity($model) : null;
     }
@@ -32,6 +37,7 @@ class EloquentUserRepository implements UserRepositoryInterface
     {
         if ($user->getId() === null) {
             $model = new UserModel;
+            $model->tenant_id = $this->tenantContext->getTenantId();
         } else {
             $model = UserModel::findOrFail($user->getId());
         }
@@ -50,26 +56,28 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     public function delete(int $id): bool
     {
-        return UserModel::destroy($id) > 0;
+        $model = $this->applyTenantScope(UserModel::query())->find($id);
+
+        return $model !== null && $model->delete();
     }
 
     public function restore(int $id): bool
     {
-        $model = UserModel::onlyTrashed()->find($id);
+        $model = $this->applyTenantScope(UserModel::onlyTrashed())->find($id);
 
         return $model !== null && $model->restore();
     }
 
     public function forceDelete(int $id): bool
     {
-        $model = UserModel::withTrashed()->find($id);
+        $model = $this->applyTenantScope(UserModel::withTrashed())->find($id);
 
         return $model !== null && $model->forceDelete();
     }
 
     public function findTrashedById(int $id): ?User
     {
-        $model = UserModel::with('roles')->onlyTrashed()->find($id);
+        $model = $this->applyTenantScope(UserModel::with('roles')->onlyTrashed())->find($id);
 
         return $model !== null ? $this->toEntity($model) : null;
     }
@@ -79,7 +87,7 @@ class EloquentUserRepository implements UserRepositoryInterface
      */
     public function findAll(): array
     {
-        return UserModel::with('roles')->get()
+        return $this->applyTenantScope(UserModel::with('roles'))->get()
             ->map(fn (UserModel $model) => $this->toEntity($model))
             ->values()
             ->all();
@@ -93,7 +101,7 @@ class EloquentUserRepository implements UserRepositoryInterface
         $perPage = max(1, min($perPage, 100));
         $offset = max(0, ($page - 1) * $perPage);
 
-        $query = $this->applyFilters(UserModel::with('roles'), $filters);
+        $query = $this->applyFilters($this->applyTenantScope(UserModel::with('roles')), $filters);
 
         $sortColumn = $filters->sort !== '' && str_starts_with($filters->sort, '-')
             ? substr($filters->sort, 1)
@@ -112,22 +120,32 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     public function count(UserFilters $filters): int
     {
-        return $this->applyFilters(UserModel::query(), $filters)->count();
+        return $this->applyFilters($this->applyTenantScope(UserModel::query()), $filters)->count();
     }
 
     public function countActive(): int
     {
-        return UserModel::count();
+        return $this->applyTenantScope(UserModel::query())->count();
     }
 
     public function countTrashed(): int
     {
-        return UserModel::onlyTrashed()->count();
+        return $this->applyTenantScope(UserModel::onlyTrashed())->count();
     }
 
     public function countCreatedToday(): int
     {
-        return UserModel::whereDate('created_at', today())->count();
+        return $this->applyTenantScope(UserModel::query())->whereDate('created_at', today())->count();
+    }
+
+    private function applyTenantScope(Builder $query): Builder
+    {
+        $tenantId = $this->tenantContext->getTenantId();
+        if ($tenantId !== null) {
+            $query->where('users.tenant_id', $tenantId);
+        }
+
+        return $query;
     }
 
     private function applyFilters(Builder $query, UserFilters $filters): Builder
@@ -189,7 +207,7 @@ class EloquentUserRepository implements UserRepositoryInterface
     public function upsertBatch(array $usersData): array
     {
         $emails = array_column($usersData, 'email');
-        $existingCount = UserModel::whereIn('email', $emails)->count();
+        $existingCount = $this->applyTenantScope(UserModel::query())->whereIn('email', $emails)->count();
 
         // Use DB::table() to bypass UserModel's 'hashed' password cast,
         // since passwords are already hashed by the job before calling this method.
@@ -214,6 +232,7 @@ class EloquentUserRepository implements UserRepositoryInterface
             password: $model->password,
             avatarPath: $model->avatar_path,
             roles: $roles,
+            tenantId: $model->tenant_id,
             createdAt: $model->created_at?->toDateTimeImmutable(),
             updatedAt: $model->updated_at?->toDateTimeImmutable(),
             deletedAt: $model->deleted_at?->toDateTimeImmutable()

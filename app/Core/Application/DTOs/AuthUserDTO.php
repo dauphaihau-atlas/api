@@ -10,6 +10,7 @@ readonly class AuthUserDTO
         public int $id,
         public string $name,
         public string $email,
-        public DateTimeImmutable $createdAt
+        public DateTimeImmutable $createdAt,
+        public ?int $tenantId = null,
     ) {}
 }
