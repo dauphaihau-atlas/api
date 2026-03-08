@@ -12,7 +12,8 @@ A production-ready **API-only backend** built with Laravel 12, following Clean A
 
 **Security**
 - **API Token Authentication** — Sanctum tokens with per-request revocation on logout
-- **Role-Based Authorization (RBAC)** — Roles and permissions stored in dedicated tables with many-to-many pivots. Gate + Policy classes consume `UserModel::hasRole()` / `hasPerm  ission()` to guard all privileged endpoints; 12 permissions seeded across `users.*` and `activity-logs.*` groups
+- **Multi-Tenancy** — Header-driven tenant resolution (`X-Tenant-ID` by ID or slug) via `ResolveTenant` / `ResolveTenantOptional` middleware; super-admin users can operate across tenants; tenant context injected into use cases for data isolation and activity logging
+- **Role-Based Authorization (RBAC)** — Roles and permissions stored in dedicated tables with many-to-many pivots. Gate + Policy classes consume `UserModel::hasRole()` / `hasPermission()` to guard all privileged endpoints; 12 permissions seeded across `users.*` and `activity-logs.*` groups
 - **Rate Limiting** — Three tiers: standard API (60/min), login (5/min), heavy operations like import/export (10/min)
 - **Signed URLs** — Export download links are time-limited (15-min expiry) and verified via Laravel's `signed` middleware
 
@@ -138,6 +139,8 @@ composer run dev       # Start artisan serve + Horizon + Pail + Reverb
 
 All routes are prefixed `/v1` with `throttle:api` (60 req/min).
 
+**Tenant Resolution**: Routes requiring a tenant use the `X-Tenant-ID` header (accepts tenant ID as integer or slug). Super-admin users can omit this header for cross-tenant access.
+
 ### Authentication
 
 | Method | Path | Auth | Description |
@@ -261,11 +264,13 @@ Set to `minio` (or any S3-compatible config) for cloud storage.
 
 ### Entities
 
-**`User`** — id, name, email (`Email` VO), password, avatarPath, roles (`Role[]`), timestamps, deletedAt
+**`User`** — id, name, email (`Email` VO), password, avatarPath, roles (`Role[]`), tenantId, timestamps, deletedAt
 
 **`Role`** — id, name, slug, description
 
-**`UserImport`** — id, batchId, filePath, status (`pending|processing|completed|failed|cancelled`), totalRows, processedRows, createdCount, updatedCount, errors[], timestamps
+**`Tenant`** — id, name, slug, settings (JSON), isActive, timestamps. Users belong to a single tenant; admins can operate cross-tenant via super_admin role.
+
+**`UserImport`** — id, batchId, filePath, status (`pending|processing|completed|failed|cancelled`), totalRows, processedRows, createdCount, updatedCount, errors[], tenantId, timestamps
 
 ### Value Objects
 
