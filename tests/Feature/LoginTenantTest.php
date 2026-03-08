@@ -17,15 +17,22 @@ class LoginTenantTest extends TestCase
     public function test_tenant_user_can_login_with_correct_tenant_header(): void
     {
         ['tenant' => $tenant] = $this->createTenantWithAdmin();
-        $user = UserModel::factory()->user()->forTenant($tenant)->create(['password' => bcrypt('secret')]);
+        $user = UserModel::factory()
+            ->user()
+            ->forTenant($tenant)
+            ->create(['password' => bcrypt('secret')]);
 
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $user->email,
-            'password' => 'secret',
-        ], [
-            'Accept' => 'application/json',
-            'X-Tenant-ID' => $tenant->slug,
-        ]);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $user->email->getValue(),
+                'password' => 'secret',
+            ],
+            [
+                'Accept' => 'application/json',
+                'X-Tenant-ID' => $tenant->slug,
+            ],
+        );
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['data' => ['token', 'user']]);
@@ -35,16 +42,23 @@ class LoginTenantTest extends TestCase
     {
         ['tenant' => $tenantA] = $this->createTenantWithAdmin();
         ['tenant' => $tenantB] = $this->createTenantWithAdmin();
-        $userA = UserModel::factory()->user()->forTenant($tenantA)->create(['password' => bcrypt('secret')]);
+        $userA = UserModel::factory()
+            ->user()
+            ->forTenant($tenantA)
+            ->create(['password' => bcrypt('secret')]);
 
         // Alice belongs to Tenant A but tries to log in with Tenant B's header
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $userA->email,
-            'password' => 'secret',
-        ], [
-            'Accept' => 'application/json',
-            'X-Tenant-ID' => $tenantB->slug,
-        ]);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $userA->email->getValue(),
+                'password' => 'secret',
+            ],
+            [
+                'Accept' => 'application/json',
+                'X-Tenant-ID' => $tenantB->slug,
+            ],
+        );
 
         $response->assertStatus(401);
     }
@@ -52,13 +66,20 @@ class LoginTenantTest extends TestCase
     public function test_tenant_user_can_login_without_tenant_header(): void
     {
         ['tenant' => $tenant] = $this->createTenantWithAdmin();
-        $user = UserModel::factory()->user()->forTenant($tenant)->create(['password' => bcrypt('secret')]);
+        $user = UserModel::factory()
+            ->user()
+            ->forTenant($tenant)
+            ->create(['password' => bcrypt('secret')]);
 
         // Login without header — optional middleware skips check
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $user->email,
-            'password' => 'secret',
-        ], ['Accept' => 'application/json']);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $user->email->getValue(),
+                'password' => 'secret',
+            ],
+            ['Accept' => 'application/json'],
+        );
 
         $response->assertStatus(200);
     }
@@ -67,12 +88,18 @@ class LoginTenantTest extends TestCase
 
     public function test_super_admin_can_login_without_tenant_header(): void
     {
-        $superAdmin = UserModel::factory()->superAdmin()->create(['password' => bcrypt('secret')]);
+        $superAdmin = UserModel::factory()
+            ->superAdmin()
+            ->create(['password' => bcrypt('secret')]);
 
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $superAdmin->email,
-            'password' => 'secret',
-        ], ['Accept' => 'application/json']);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $superAdmin->email->getValue(),
+                'password' => 'secret',
+            ],
+            ['Accept' => 'application/json'],
+        );
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['data' => ['token', 'user']]);
@@ -81,16 +108,22 @@ class LoginTenantTest extends TestCase
     public function test_super_admin_cannot_login_with_tenant_header(): void
     {
         ['tenant' => $tenant] = $this->createTenantWithAdmin();
-        $superAdmin = UserModel::factory()->superAdmin()->create(['password' => bcrypt('secret')]);
+        $superAdmin = UserModel::factory()
+            ->superAdmin()
+            ->create(['password' => bcrypt('secret')]);
 
         // Super admin (tenantId = null) does not belong to any tenant → 401
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $superAdmin->email,
-            'password' => 'secret',
-        ], [
-            'Accept' => 'application/json',
-            'X-Tenant-ID' => $tenant->slug,
-        ]);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $superAdmin->email->getValue(),
+                'password' => 'secret',
+            ],
+            [
+                'Accept' => 'application/json',
+                'X-Tenant-ID' => $tenant->slug,
+            ],
+        );
 
         $response->assertStatus(401);
     }
@@ -100,15 +133,22 @@ class LoginTenantTest extends TestCase
     public function test_wrong_password_returns_401(): void
     {
         ['tenant' => $tenant] = $this->createTenantWithAdmin();
-        $user = UserModel::factory()->user()->forTenant($tenant)->create(['password' => bcrypt('correct')]);
+        $user = UserModel::factory()
+            ->user()
+            ->forTenant($tenant)
+            ->create(['password' => bcrypt('correct')]);
 
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $user->email,
-            'password' => 'wrong-password',
-        ], [
-            'Accept' => 'application/json',
-            'X-Tenant-ID' => $tenant->slug,
-        ]);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $user->email->getValue(),
+                'password' => 'wrong-password',
+            ],
+            [
+                'Accept' => 'application/json',
+                'X-Tenant-ID' => $tenant->slug,
+            ],
+        );
 
         $response->assertStatus(401);
     }

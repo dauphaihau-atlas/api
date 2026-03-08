@@ -58,9 +58,16 @@ class ResolveTenantMiddlewareTest extends TestCase
 
     public function test_valid_tenant_header_allows_request(): void
     {
-        ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        [
+            'tenant' => $tenant,
+            'admin' => $admin,
+            'token' => $token,
+        ] = $this->createTenantWithAdmin();
 
-        $response = $this->getJson('/api/v1/users', $this->tenantHeaders($tenant, $token));
+        $response = $this->getJson(
+            '/api/v1/users',
+            $this->tenantHeaders($tenant, $token),
+        );
 
         $response->assertStatus(200);
     }
@@ -81,12 +88,18 @@ class ResolveTenantMiddlewareTest extends TestCase
 
     public function test_login_succeeds_without_tenant_header(): void
     {
-        $user = UserModel::factory()->user()->create(['password' => bcrypt('secret')]);
+        $user = UserModel::factory()
+            ->user()
+            ->create(['password' => bcrypt('secret')]);
 
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $user->email,
-            'password' => 'secret',
-        ], ['Accept' => 'application/json']);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $user->email->getValue(),
+                'password' => 'secret',
+            ],
+            ['Accept' => 'application/json'],
+        );
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['data' => ['token']]);
@@ -95,30 +108,43 @@ class ResolveTenantMiddlewareTest extends TestCase
     public function test_login_with_valid_active_tenant_header_succeeds(): void
     {
         ['tenant' => $tenant] = $this->createTenantWithAdmin();
-        $user = UserModel::factory()->user()->forTenant($tenant)->create(['password' => bcrypt('secret')]);
+        $user = UserModel::factory()
+            ->user()
+            ->forTenant($tenant)
+            ->create(['password' => bcrypt('secret')]);
 
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $user->email,
-            'password' => 'secret',
-        ], [
-            'Accept' => 'application/json',
-            'X-Tenant-ID' => $tenant->slug,
-        ]);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $user->email->getValue(),
+                'password' => 'secret',
+            ],
+            [
+                'Accept' => 'application/json',
+                'X-Tenant-ID' => $tenant->slug,
+            ],
+        );
 
         $response->assertStatus(200);
     }
 
     public function test_login_with_unknown_optional_tenant_header_returns_404(): void
     {
-        $user = UserModel::factory()->user()->create(['password' => bcrypt('secret')]);
+        $user = UserModel::factory()
+            ->user()
+            ->create(['password' => bcrypt('secret')]);
 
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $user->email,
-            'password' => 'secret',
-        ], [
-            'Accept' => 'application/json',
-            'X-Tenant-ID' => 'non-existent-slug',
-        ]);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $user->email->getValue(),
+                'password' => 'secret',
+            ],
+            [
+                'Accept' => 'application/json',
+                'X-Tenant-ID' => 'non-existent-slug',
+            ],
+        );
 
         $response->assertStatus(404);
     }
@@ -126,15 +152,22 @@ class ResolveTenantMiddlewareTest extends TestCase
     public function test_login_with_inactive_optional_tenant_header_returns_422(): void
     {
         $tenant = TenantModel::factory()->inactive()->create();
-        $user = UserModel::factory()->user()->forTenant($tenant)->create(['password' => bcrypt('secret')]);
+        $user = UserModel::factory()
+            ->user()
+            ->forTenant($tenant)
+            ->create(['password' => bcrypt('secret')]);
 
-        $response = $this->postJson('/api/v1/login', [
-            'email' => $user->email,
-            'password' => 'secret',
-        ], [
-            'Accept' => 'application/json',
-            'X-Tenant-ID' => $tenant->slug,
-        ]);
+        $response = $this->postJson(
+            '/api/v1/login',
+            [
+                'email' => $user->email->getValue(),
+                'password' => 'secret',
+            ],
+            [
+                'Accept' => 'application/json',
+                'X-Tenant-ID' => $tenant->slug,
+            ],
+        );
 
         $response->assertStatus(422);
     }
