@@ -11,52 +11,64 @@ use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Infrastructure\Tenant\TenantContext;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
 {
-    public function __construct(
-        private readonly TenantContext $tenantContext
-    ) {}
+    public function __construct(private readonly TenantContext $tenantContext) {}
 
     /**
      * @return ActivityLogEntry[]
      */
-    public function findPaginated(ActivityLogFilters $filters, int $page, int $perPage): array
-    {
-        $query = $this->applyFilters($this->applyTenantScope(ActivityLogModel::query()->with('causer')), $filters);
+    public function findPaginated(
+        ActivityLogFilters $filters,
+        int $page,
+        int $perPage,
+    ): array {
+        $query = $this->applyFilters(
+            $this->applyTenantScope(ActivityLogModel::query()->with('causer')),
+            $filters,
+        );
 
-        $sortColumn = $filters->sort !== '' && str_starts_with($filters->sort, '-')
+        $sortColumn =
+          $filters->sort !== '' && str_starts_with($filters->sort, '-')
             ? substr($filters->sort, 1)
             : $filters->sort;
         $sortColumn = $this->validateSortColumn($sortColumn);
         $sortDir = str_starts_with($filters->sort, '-') ? 'desc' : 'asc';
 
         $offset = max(0, ($page - 1) * $perPage);
-        $models = $query->orderBy($sortColumn, $sortDir)
+        $models = $query
+            ->orderBy($sortColumn, $sortDir)
             ->offset($offset)
             ->limit($perPage)
             ->get();
 
         return array_map(
             fn (ActivityLogModel $model) => $this->toEntry($model),
-            $models->all()
+            $models->all(),
         );
     }
 
     public function count(ActivityLogFilters $filters): int
     {
-        return $this->applyFilters($this->applyTenantScope(ActivityLogModel::query()), $filters)->count();
+        return $this->applyFilters(
+            $this->applyTenantScope(ActivityLogModel::query()),
+            $filters,
+        )->count();
     }
 
     public function findById(int $id): ?ActivityLogEntry
     {
-        $model = $this->applyTenantScope(ActivityLogModel::query()->with('causer'))->find($id);
+        $model = $this->applyTenantScope(
+            ActivityLogModel::query()->with('causer'),
+        )->find($id);
 
         return $model !== null ? $this->toEntry($model) : null;
     }
 
-    private function applyTenantScope(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    private function applyTenantScope(Builder $query): Builder
     {
         $tenantId = $this->tenantContext->getTenantId();
         if ($tenantId !== null) {
@@ -66,36 +78,41 @@ class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
         return $query;
     }
 
-    private function applyFilters(\Illuminate\Database\Eloquent\Builder $query, ActivityLogFilters $filters): \Illuminate\Database\Eloquent\Builder
-    {
+    private function applyFilters(
+        Builder $query,
+        ActivityLogFilters $filters,
+    ): Builder {
         if ($filters->search !== null && $filters->search !== '') {
             $search = $filters->search;
 
             if (DB::connection()->getDriverName() === 'pgsql') {
                 $tsquery = $this->buildPrefixTsquery($search);
-                $query->where(function (\Illuminate\Database\Eloquent\Builder $q) use ($tsquery): void {
+                $query->where(function (Builder $q) use ($tsquery): void {
                     $q->whereExists(function ($sub) use ($tsquery): void {
-                        $sub->select(DB::raw(1))
+                        $sub
+                            ->select(DB::raw(1))
                             ->from('users')
                             ->whereColumn('users.id', 'activity_logs.causer_id')
                             ->whereRaw(
                                 "to_tsvector('simple', coalesce(users.name, '') || ' ' || coalesce(users.email, '')) @@ to_tsquery('simple', ?)",
-                                [$tsquery]
+                                [$tsquery],
                             );
                     })->orWhereRaw(
                         "to_tsvector('simple', coalesce(event, '')) @@ to_tsquery('simple', ?)",
-                        [$tsquery]
+                        [$tsquery],
                     );
                 });
             } else {
                 $like = '%'.$search.'%';
-                $query->where(function (\Illuminate\Database\Eloquent\Builder $q) use ($like): void {
+                $query->where(function (Builder $q) use ($like): void {
                     $q->whereExists(function ($sub) use ($like): void {
-                        $sub->select(DB::raw(1))
+                        $sub
+                            ->select(DB::raw(1))
                             ->from('users')
                             ->whereColumn('users.id', 'activity_logs.causer_id')
                             ->where(function ($userQ) use ($like): void {
-                                $userQ->where('users.name', 'LIKE', $like)
+                                $userQ
+                                    ->where('users.name', 'LIKE', $like)
                                     ->orWhere('users.email', 'LIKE', $like);
                             });
                     })->orWhere('event', 'LIKE', $like);
@@ -133,21 +150,34 @@ class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
      */
     private function buildPrefixTsquery(string $input): string
     {
-        $terms = preg_split('/\s+/', trim($input), -1, PREG_SPLIT_NO_EMPTY);
+        $terms = preg_split("/\s+/", trim($input), -1, PREG_SPLIT_NO_EMPTY);
         if ($terms === false || $terms === []) {
             return '';
         }
 
-        return implode(' & ', array_map(function (string $term): string {
-            $sanitized = preg_replace('/[^\w@.\-]/', '', $term);
+        return implode(
+            ' & ',
+            array_map(function (string $term): string {
+                $sanitized = preg_replace("/[^\w@.\-]/", '', $term);
 
-            return $sanitized.':*';
-        }, $terms));
+                return $sanitized.':*';
+            }, $terms),
+        );
     }
 
     private function validateSortColumn(string $column): string
     {
-        $allowed = ['id', 'log_name', 'event', 'subject_type', 'subject_id', 'causer_type', 'causer_id', 'created_at', 'updated_at'];
+        $allowed = [
+            'id',
+            'log_name',
+            'event',
+            'subject_type',
+            'subject_id',
+            'causer_type',
+            'causer_id',
+            'created_at',
+            'updated_at',
+        ];
 
         return in_array($column, $allowed, true) ? $column : 'created_at';
     }
@@ -159,7 +189,7 @@ class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
         $causer = $model->getRelationValue('causer');
         if ($causer instanceof UserModel) {
             $causerName = $causer->name ?? null;
-            $causerEmail = $causer->email ?? null;
+            $causerEmail = $causer->email?->getValue() ?? null;
         }
 
         $createdAt = $model->created_at;
