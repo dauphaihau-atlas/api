@@ -108,6 +108,7 @@ return [
             'bucket' => env('MINIO_BUCKET', env('AWS_BUCKET')),
             'url' => env('MINIO_URL', env('AWS_URL')),
             'endpoint' => env('MINIO_ENDPOINT', env('AWS_ENDPOINT')),
+            'temporary_url' => env('MINIO_TEMPORARY_URL', env('MINIO_URL')),
             'use_path_style_endpoint' => true,
             'throw' => false,
             'report' => false,

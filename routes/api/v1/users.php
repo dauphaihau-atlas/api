@@ -20,9 +20,6 @@ Route::middleware(['authorize.user:import', 'throttle.api:heavy'])->group(functi
 Route::middleware(['authorize.user:export', 'throttle.api:heavy'])->group(function (): void {
     Route::get('users/export', [UserController::class, 'export']);
     Route::get('users/export/last', [UserController::class, 'lastExport']);
-    Route::get('users/export/download', [UserController::class, 'downloadExport'])
-        ->middleware('signed')
-        ->name('export.download');
 });
 
 Route::delete('users/import/{id}', [UserController::class, 'cancelImport'])

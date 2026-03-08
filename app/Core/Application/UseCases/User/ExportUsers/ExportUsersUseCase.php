@@ -4,18 +4,13 @@ namespace App\Core\Application\UseCases\User\ExportUsers;
 
 use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Domain\Entities\User;
-use DateTimeImmutable;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
-use Throwable;
 
 class ExportUsersUseCase
 {
     private const CSV_HEADER = ['id', 'name', 'email', 'roles', 'created_at'];
-
-    private const TEMPORARY_URL_EXPIRY_MINUTES = 15;
 
     public function __construct(
         private readonly UserRepositoryInterface $userRepository
@@ -44,38 +39,9 @@ class ExportUsersUseCase
             throw new RuntimeException('Failed to write export file to storage.');
         }
 
-        Log::info('ExportUsers: file written', ['path' => $path, 'written_bytes' => $written]);
+        Log::info(‘ExportUsers: complete’, [‘path’ => $path]);
 
-        $url = null;
-        $expiresAt = null;
-
-        if ($diskName !== 'local') {
-            $expiresAt = new DateTimeImmutable('+'.self::TEMPORARY_URL_EXPIRY_MINUTES.' minutes');
-            try {
-                // temporaryUrl($path, $expiration) is a method on Laravel’s filesystem adapter.
-                // It returns a time-limited, pre-signed URL that lets someone download the file from the
-                // storage backend without going through your app and without needing your storage credentials.
-                /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-                $url = $disk->temporaryUrl($path, $expiresAt);
-            } catch (Throwable) {
-                $url = null;
-                $expiresAt = null;
-            }
-        }
-
-        Log::info('ExportUsers: complete', [
-            'path' => $path,
-            'has_signed_url' => $url !== null,
-            'expires_at' => $expiresAt?->format('c'),
-        ]);
-
-        Cache::put("exports:users:last:{$request->adminId}", [
-            'path' => $path,
-            'url' => $url,
-            'expires_at' => $expiresAt?->format('c'),
-        ], self::TEMPORARY_URL_EXPIRY_MINUTES * 60);
-
-        return new ExportUsersResponse($path, $url, $expiresAt);
+        return new ExportUsersResponse($path, null, null);
     }
 
     private function buildCsvContent(): string

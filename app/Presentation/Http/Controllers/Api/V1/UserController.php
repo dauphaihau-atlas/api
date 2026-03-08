@@ -30,7 +30,6 @@ use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
 use App\Presentation\Http\Requests\ImportUsersRequest as HttpImportUsersRequest;
 use App\Presentation\Http\Resources\UserResource;
 use App\Presentation\Http\Responses\ApiResponse;
-use DateTimeInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -264,7 +263,7 @@ class UserController extends Controller
         $response = $this->getUserStatsUseCase->execute();
 
         return ApiResponse::ok([
-            'total_active'  => $response->totalActive,
+            'total_active' => $response->totalActive,
             'total_deleted' => $response->totalDeleted,
             'created_today' => $response->createdToday,
         ]);
@@ -299,29 +298,24 @@ class UserController extends Controller
             );
         }
 
-        $url = $response->url;
-        $expiresAt = $response->expiresAt;
+        $expiresAt = now()->addMinutes(15);
+        $url = URL::temporarySignedRoute(
+            'export.download',
+            $expiresAt,
+            ['path' => $response->path]
+        );
 
-        if ($url === null) {
-            $expiresAt = now()->addMinutes(15);
-            $url = URL::temporarySignedRoute(
-                'export.download',
-                $expiresAt,
-                ['path' => $response->path]
-            );
-        }
-
-        $payload = [
+        Cache::put("exports:users:last:{$admin->id}", [
             'path' => $response->path,
             'url' => $url,
-        ];
-        if ($expiresAt !== null) {
-            $payload['expires_at'] = $expiresAt instanceof DateTimeInterface
-                ? $expiresAt->format('c')
-                : $expiresAt->format('c');
-        }
+            'expires_at' => $expiresAt->format('c'),
+        ], 15 * 60);
 
-        return ApiResponse::ok($payload);
+        return ApiResponse::ok([
+            'path' => $response->path,
+            'url' => $url,
+            'expires_at' => $expiresAt->format('c'),
+        ]);
     }
 
     /**
