@@ -4,6 +4,7 @@ namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Domain\Entities\UserImport;
+use App\Core\Domain\Enums\ImportStatus;
 use App\Infrastructure\Persistence\Eloquent\Models\UserImportModel;
 use App\Infrastructure\Tenant\TenantContext;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ class EloquentUserImportRepository implements UserImportRepositoryInterface
 
         $model->batch_id = $import->getBatchId();
         $model->file_path = $import->getFilePath();
-        $model->status = $import->getStatus();
+        $model->status = $import->getStatus()->value;
         $model->total_rows = $import->getTotalRows();
         $model->processed_rows = $import->getProcessedRows();
         $model->created_count = $import->getCreatedCount();
@@ -64,15 +65,15 @@ class EloquentUserImportRepository implements UserImportRepositoryInterface
         }
     }
 
-    public function updateStatus(int $id, string $status): void
+    public function updateStatus(int $id, ImportStatus $status): void
     {
-        $data = ['status' => $status];
+        $data = ['status' => $status->value];
 
-        if ($status === 'processing') {
+        if ($status === ImportStatus::Processing) {
             $data['started_at'] = now();
         }
 
-        if ($status === 'completed' || $status === 'failed') {
+        if ($status === ImportStatus::Completed || $status === ImportStatus::Failed) {
             $data['completed_at'] = now();
         }
 

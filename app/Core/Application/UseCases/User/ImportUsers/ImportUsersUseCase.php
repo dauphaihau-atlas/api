@@ -4,6 +4,7 @@ namespace App\Core\Application\UseCases\User\ImportUsers;
 
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Domain\Entities\UserImport;
+use App\Core\Domain\Enums\ImportStatus;
 use App\Infrastructure\Tenant\TenantContext;
 use App\Jobs\ProcessImportChunk;
 use Illuminate\Bus\Batch;
@@ -32,21 +33,21 @@ class ImportUsersUseCase
         // Use $disk->readStream() which works for both local and S3/MinIO disks.
         $stream = $disk->readStream($request->path);
         if ($stream === null) {
-            return new ImportUsersResponse(null, 'failed', 'Failed to open import file.');
+            return new ImportUsersResponse(null, ImportStatus::Failed->value, 'Failed to open import file.');
         }
 
         $headerRow = fgetcsv($stream);
         if ($headerRow === false) {
             fclose($stream);
 
-            return new ImportUsersResponse(null, 'failed', 'Empty CSV file.');
+            return new ImportUsersResponse(null, ImportStatus::Failed->value, 'Empty CSV file.');
         }
 
         $headerMap = $this->normalizeAndValidateHeaders($headerRow);
         if ($headerMap === null) {
             fclose($stream);
 
-            return new ImportUsersResponse(null, 'failed', 'Invalid or missing CSV headers. Required: name, email, password.');
+            return new ImportUsersResponse(null, ImportStatus::Failed->value, 'Invalid or missing CSV headers. Required: name, email, password.');
         }
 
         $totalRows = 0;
@@ -58,7 +59,7 @@ class ImportUsersUseCase
         fclose($stream);
 
         if ($totalRows === 0) {
-            return new ImportUsersResponse(null, 'failed', 'CSV file contains no data rows.');
+            return new ImportUsersResponse(null, ImportStatus::Failed->value, 'CSV file contains no data rows.');
         }
 
         // Create import tracking record
@@ -66,7 +67,7 @@ class ImportUsersUseCase
             id: null,
             batchId: Str::uuid()->toString(),
             filePath: $request->path,
-            status: 'pending',
+            status: ImportStatus::Pending,
             totalRows: $totalRows,
             tenantId: $this->tenantContext->getTenantId(),
         );
@@ -78,13 +79,13 @@ class ImportUsersUseCase
             ->name("User Import #{$importId}")
             ->then(function (Batch $batch) use ($importId): void {
                 $repo = app(UserImportRepositoryInterface::class);
-                $repo->updateStatus($importId, 'completed');
+                $repo->updateStatus($importId, ImportStatus::Completed);
 
                 $import = $repo->findById($importId);
                 if ($import !== null) {
                     \App\Infrastructure\Broadcasting\Events\ImportCompleted::dispatch(
                         $importId,
-                        'completed',
+                        ImportStatus::Completed->value,
                         $import->getTotalRows(),
                         $import->getProcessedRows(),
                         $import->getCreatedCount(),
@@ -100,13 +101,13 @@ class ImportUsersUseCase
                 ]);
 
                 $repo = app(UserImportRepositoryInterface::class);
-                $repo->updateStatus($importId, 'failed');
+                $repo->updateStatus($importId, ImportStatus::Failed);
 
                 $import = $repo->findById($importId);
                 if ($import !== null) {
                     \App\Infrastructure\Broadcasting\Events\ImportCompleted::dispatch(
                         $importId,
-                        'failed',
+                        ImportStatus::Failed->value,
                         $import->getTotalRows(),
                         $import->getProcessedRows(),
                         $import->getCreatedCount(),
@@ -163,9 +164,9 @@ class ImportUsersUseCase
 
         fclose($stream);
 
-        $this->importRepository->updateStatus($importId, 'processing');
+        $this->importRepository->updateStatus($importId, ImportStatus::Processing);
 
-        return new ImportUsersResponse($importId, 'processing');
+        return new ImportUsersResponse($importId, ImportStatus::Processing->value);
     }
 
     /**

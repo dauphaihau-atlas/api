@@ -3,6 +3,7 @@
 namespace App\Core\Application\Contracts;
 
 use App\Core\Domain\Entities\UserImport;
+use App\Core\Domain\Enums\ImportStatus;
 
 interface UserImportRepositoryInterface
 {
@@ -17,5 +18,5 @@ interface UserImportRepositoryInterface
      */
     public function addChunkResult(int $id, int $processedRows, int $created, int $updated, array $errors): void;
 
-    public function updateStatus(int $id, string $status): void;
+    public function updateStatus(int $id, ImportStatus $status): void;
 }

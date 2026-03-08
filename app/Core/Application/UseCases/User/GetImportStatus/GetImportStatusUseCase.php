@@ -20,7 +20,7 @@ class GetImportStatusUseCase
 
         return new GetImportStatusResponse(
             id: $import->getId(),
-            status: $import->getStatus(),
+            status: $import->getStatus()->value,
             totalRows: $import->getTotalRows(),
             processedRows: $import->getProcessedRows(),
             createdCount: $import->getCreatedCount(),

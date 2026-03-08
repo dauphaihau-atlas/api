@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Application\UseCases\User\CancelImport;
 
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
+use App\Core\Domain\Enums\ImportStatus;
 use App\Exceptions\ConflictException;
 use App\Exceptions\NotFoundException;
 use App\Infrastructure\Broadcasting\Events\ImportCompleted;
@@ -25,18 +26,18 @@ class CancelImportUseCase
         }
 
         $status = $import->getStatus();
-        if (! in_array($status, ['pending', 'processing'], true)) {
-            throw new ConflictException("Import already {$status}.");
+        if (! in_array($status, [ImportStatus::Pending, ImportStatus::Processing], true)) {
+            throw new ConflictException("Import already {$status->value}.");
         }
 
         $batch = Bus::findBatch($import->getBatchId());
         $batch?->cancel();
 
-        $this->importRepository->updateStatus($import->getId(), 'cancelled');
+        $this->importRepository->updateStatus($import->getId(), ImportStatus::Cancelled);
 
         ImportCompleted::dispatch(
             $import->getId(),
-            'cancelled',
+            ImportStatus::Cancelled->value,
             $import->getTotalRows(),
             $import->getProcessedRows(),
             $import->getCreatedCount(),
@@ -44,6 +45,6 @@ class CancelImportUseCase
             $import->getErrors()
         );
 
-        return new CancelImportResponse($import->getId(), 'cancelled');
+        return new CancelImportResponse($import->getId(), ImportStatus::Cancelled->value);
     }
 }

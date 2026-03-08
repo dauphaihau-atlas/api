@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Persistence\Eloquent\Models;
 
+use App\Core\Domain\Enums\ImportStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -31,6 +32,7 @@ class UserImportModel extends Model
     protected function casts(): array
     {
         return [
+            'status' => ImportStatus::class,
             'errors' => 'array',
             'total_rows' => 'integer',
             'processed_rows' => 'integer',

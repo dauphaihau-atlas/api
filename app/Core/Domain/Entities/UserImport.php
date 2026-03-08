@@ -2,6 +2,7 @@
 
 namespace App\Core\Domain\Entities;
 
+use App\Core\Domain\Enums\ImportStatus;
 use DateTimeImmutable;
 
 class UserImport
@@ -10,7 +11,7 @@ class UserImport
         private ?int $id,
         private string $batchId,
         private string $filePath,
-        private string $status,
+        private ImportStatus $status,
         private int $totalRows = 0,
         private int $processedRows = 0,
         private int $createdCount = 0,
@@ -41,7 +42,7 @@ class UserImport
         return $this->filePath;
     }
 
-    public function getStatus(): string
+    public function getStatus(): ImportStatus
     {
         return $this->status;
     }
@@ -101,28 +102,28 @@ class UserImport
 
     public function markAsProcessing(): void
     {
-        $this->status = 'processing';
+        $this->status = ImportStatus::Processing;
         $this->startedAt = new DateTimeImmutable;
         $this->updatedAt = new DateTimeImmutable;
     }
 
     public function markAsCompleted(): void
     {
-        $this->status = 'completed';
+        $this->status = ImportStatus::Completed;
         $this->completedAt = new DateTimeImmutable;
         $this->updatedAt = new DateTimeImmutable;
     }
 
     public function markAsFailed(): void
     {
-        $this->status = 'failed';
+        $this->status = ImportStatus::Failed;
         $this->completedAt = new DateTimeImmutable;
         $this->updatedAt = new DateTimeImmutable;
     }
 
     public function markAsCancelled(): void
     {
-        $this->status = 'cancelled';
+        $this->status = ImportStatus::Cancelled;
         $this->completedAt = new DateTimeImmutable;
         $this->updatedAt = new DateTimeImmutable;
     }
