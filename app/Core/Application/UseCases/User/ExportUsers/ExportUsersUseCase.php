@@ -39,7 +39,7 @@ class ExportUsersUseCase
             throw new RuntimeException('Failed to write export file to storage.');
         }
 
-        Log::info(‘ExportUsers: complete’, [‘path’ => $path]);
+        Log::info('ExportUsers: complete', ['path' => $path]);
 
         return new ExportUsersResponse($path, null, null);
     }
