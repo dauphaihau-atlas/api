@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Persistence\Eloquent\Models;
 
+use App\Infrastructure\Persistence\Eloquent\Casts\EmailCast;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -29,14 +30,12 @@ class UserModel extends Authenticatable
         'tenant_id',
     ];
 
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ['password', 'remember_token'];
 
     protected function casts(): array
     {
         return [
+            'email' => EmailCast::class,
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
@@ -49,7 +48,12 @@ class UserModel extends Authenticatable
 
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(RoleModel::class, 'role_user', 'user_id', 'role_id');
+        return $this->belongsToMany(
+            RoleModel::class,
+            'role_user',
+            'user_id',
+            'role_id',
+        );
     }
 
     public function hasRole(string $slug): bool
@@ -60,5 +64,10 @@ class UserModel extends Authenticatable
     public function hasPermission(string $slug): bool
     {
         return $this->roles->flatMap->permissions->contains('slug', $slug);
+    }
+
+    public function routeNotificationForMail(): string
+    {
+        return $this->email->getValue();
     }
 }

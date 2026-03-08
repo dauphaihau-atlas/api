@@ -6,7 +6,6 @@ use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Application\DTOs\UserFilters;
 use App\Core\Domain\Entities\Role;
 use App\Core\Domain\Entities\User;
-use App\Core\Domain\ValueObjects\Email;
 use App\Infrastructure\Persistence\Eloquent\Models\RoleModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Infrastructure\Tenant\TenantContext;
@@ -15,9 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class EloquentUserRepository implements UserRepositoryInterface
 {
-    public function __construct(
-        private readonly TenantContext $tenantContext
-    ) {}
+    public function __construct(private readonly TenantContext $tenantContext) {}
 
     public function findById(int $id): ?User
     {
@@ -28,7 +25,9 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     public function findByEmail(string $email): ?User
     {
-        $model = $this->applyTenantScope(UserModel::with('roles'))->where('email', $email)->first();
+        $model = $this->applyTenantScope(UserModel::with('roles'))
+            ->where('email', $email)
+            ->first();
 
         return $model !== null ? $this->toEntity($model) : null;
     }
@@ -77,7 +76,9 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     public function findTrashedById(int $id): ?User
     {
-        $model = $this->applyTenantScope(UserModel::with('roles')->onlyTrashed())->find($id);
+        $model = $this->applyTenantScope(
+            UserModel::with('roles')->onlyTrashed(),
+        )->find($id);
 
         return $model !== null ? $this->toEntity($model) : null;
     }
@@ -87,7 +88,8 @@ class EloquentUserRepository implements UserRepositoryInterface
      */
     public function findAll(): array
     {
-        return $this->applyTenantScope(UserModel::with('roles'))->get()
+        return $this->applyTenantScope(UserModel::with('roles'))
+            ->get()
             ->map(fn (UserModel $model) => $this->toEntity($model))
             ->values()
             ->all();
@@ -96,20 +98,28 @@ class EloquentUserRepository implements UserRepositoryInterface
     /**
      * @return User[]
      */
-    public function findPaginated(UserFilters $filters, int $page, int $perPage): array
-    {
+    public function findPaginated(
+        UserFilters $filters,
+        int $page,
+        int $perPage,
+    ): array {
         $perPage = max(1, min($perPage, 100));
         $offset = max(0, ($page - 1) * $perPage);
 
-        $query = $this->applyFilters($this->applyTenantScope(UserModel::with('roles')), $filters);
+        $query = $this->applyFilters(
+            $this->applyTenantScope(UserModel::with('roles')),
+            $filters,
+        );
 
-        $sortColumn = $filters->sort !== '' && str_starts_with($filters->sort, '-')
+        $sortColumn =
+          $filters->sort !== '' && str_starts_with($filters->sort, '-')
             ? substr($filters->sort, 1)
             : $filters->sort;
         $sortColumn = $this->validateSortColumn($sortColumn);
         $sortDir = str_starts_with($filters->sort, '-') ? 'desc' : 'asc';
 
-        return $query->orderBy($sortColumn, $sortDir)
+        return $query
+            ->orderBy($sortColumn, $sortDir)
             ->offset($offset)
             ->limit($perPage)
             ->get()
@@ -120,7 +130,10 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     public function count(UserFilters $filters): int
     {
-        return $this->applyFilters($this->applyTenantScope(UserModel::query()), $filters)->count();
+        return $this->applyFilters(
+            $this->applyTenantScope(UserModel::query()),
+            $filters,
+        )->count();
     }
 
     public function countActive(): int
@@ -135,7 +148,9 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     public function countCreatedToday(): int
     {
-        return $this->applyTenantScope(UserModel::query())->whereDate('created_at', today())->count();
+        return $this->applyTenantScope(UserModel::query())
+            ->whereDate('created_at', today())
+            ->count();
     }
 
     private function applyTenantScope(Builder $query): Builder
@@ -163,13 +178,12 @@ class EloquentUserRepository implements UserRepositoryInterface
                 $tsquery = $this->buildPrefixTsquery($search);
                 $query->whereRaw(
                     "to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(email, '')) @@ to_tsquery('simple', ?)",
-                    [$tsquery]
+                    [$tsquery],
                 );
             } else {
                 $like = '%'.$search.'%';
                 $query->where(function (Builder $q) use ($like): void {
-                    $q->where('name', 'LIKE', $like)
-                        ->orWhere('email', 'LIKE', $like);
+                    $q->where('name', 'LIKE', $like)->orWhere('email', 'LIKE', $like);
                 });
             }
         }
@@ -185,21 +199,31 @@ class EloquentUserRepository implements UserRepositoryInterface
      */
     private function buildPrefixTsquery(string $input): string
     {
-        $terms = preg_split('/\s+/', trim($input), -1, PREG_SPLIT_NO_EMPTY);
+        $terms = preg_split("/\s+/", trim($input), -1, PREG_SPLIT_NO_EMPTY);
         if ($terms === false || $terms === []) {
             return '';
         }
 
-        return implode(' & ', array_map(function (string $term): string {
-            $sanitized = preg_replace('/[^\w@.\-]/', '', $term);
+        return implode(
+            ' & ',
+            array_map(function (string $term): string {
+                $sanitized = preg_replace("/[^\w@.\-]/", '', $term);
 
-            return $sanitized.':*';
-        }, $terms));
+                return $sanitized.':*';
+            }, $terms),
+        );
     }
 
     private function validateSortColumn(string $column): string
     {
-        $allowed = ['id', 'name', 'email', 'created_at', 'updated_at', 'deleted_at'];
+        $allowed = [
+            'id',
+            'name',
+            'email',
+            'created_at',
+            'updated_at',
+            'deleted_at',
+        ];
 
         return in_array($column, $allowed, true) ? $column : 'id';
     }
@@ -207,11 +231,17 @@ class EloquentUserRepository implements UserRepositoryInterface
     public function upsertBatch(array $usersData): array
     {
         $emails = array_column($usersData, 'email');
-        $existingCount = $this->applyTenantScope(UserModel::query())->whereIn('email', $emails)->count();
+        $existingCount = $this->applyTenantScope(UserModel::query())
+            ->whereIn('email', $emails)
+            ->count();
 
         // Use DB::table() to bypass UserModel's 'hashed' password cast,
         // since passwords are already hashed by the job before calling this method.
-        DB::table('users')->upsert($usersData, ['email'], ['name', 'password', 'updated_at']);
+        DB::table('users')->upsert(
+            $usersData,
+            ['email'],
+            ['name', 'password', 'updated_at'],
+        );
 
         return [
             'created' => count($usersData) - $existingCount,
@@ -222,20 +252,29 @@ class EloquentUserRepository implements UserRepositoryInterface
     private function toEntity(UserModel $model): User
     {
         $roles = $model->relationLoaded('roles')
-            ? $model->roles->map(fn (RoleModel $r) => new Role($r->id, $r->name, $r->slug, $r->description))->all()
-            : [];
+          ? $model->roles
+              ->map(
+                  fn (RoleModel $r) => new Role(
+                      $r->id,
+                      $r->name,
+                      $r->slug,
+                      $r->description,
+                  ),
+              )
+              ->all()
+          : [];
 
         return new User(
             id: $model->id,
             name: $model->name,
-            email: new Email($model->email),
+            email: $model->email,
             password: $model->password,
             avatarPath: $model->avatar_path,
             roles: $roles,
             tenantId: $model->tenant_id,
             createdAt: $model->created_at?->toDateTimeImmutable(),
             updatedAt: $model->updated_at?->toDateTimeImmutable(),
-            deletedAt: $model->deleted_at?->toDateTimeImmutable()
+            deletedAt: $model->deleted_at?->toDateTimeImmutable(),
         );
     }
 }
