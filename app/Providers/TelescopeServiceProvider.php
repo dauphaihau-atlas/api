@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\User;
+use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Telescope\IncomingEntry;
 use Laravel\Telescope\Telescope;
@@ -33,11 +33,11 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
 
         Telescope::filter(function (IncomingEntry $entry) use ($isLocal) {
             return $isLocal ||
-                   $entry->isReportableException() ||
-                   $entry->isFailedRequest() ||
-                   $entry->isFailedJob() ||
-                   $entry->isScheduledTask() ||
-                   $entry->hasMonitoredTag();
+              $entry->isReportableException() ||
+              $entry->isFailedRequest() ||
+              $entry->isFailedJob() ||
+              $entry->isScheduledTask() ||
+              $entry->hasMonitoredTag();
         });
     }
 
@@ -52,11 +52,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
 
         Telescope::hideRequestParameters(['_token']);
 
-        Telescope::hideRequestHeaders([
-            'cookie',
-            'x-csrf-token',
-            'x-xsrf-token',
-        ]);
+        Telescope::hideRequestHeaders(['cookie', 'x-csrf-token', 'x-xsrf-token']);
     }
 
     /**
@@ -66,7 +62,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     protected function gate(): void
     {
-        Gate::define('viewTelescope', function (User $user) {
+        Gate::define('viewTelescope', function (UserModel $user) {
             // Allow admin role (matches AppServiceProvider admin gate)
             if (($user->role ?? null) === 'admin') {
                 return true;
