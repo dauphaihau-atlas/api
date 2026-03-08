@@ -18,7 +18,7 @@ class CacheControlMiddlewareTest extends TestCase
     {
         parent::setUp();
         Cache::flush();
-        $this->middleware = new CacheControlMiddleware();
+        $this->middleware = new CacheControlMiddleware;
     }
 
     // -------------------------------------------------------------------------
