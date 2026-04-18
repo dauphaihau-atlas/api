@@ -2,10 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Infrastructure\Persistence\Eloquent\Models\RoleModel;
 use App\Infrastructure\Persistence\Eloquent\Models\TenantModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,21 +16,51 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $tenant = TenantModel::factory()->create([
-            'name' => 'Default Tenant',
+        $tenant = TenantModel::query()->updateOrCreate([
             'slug' => 'default',
+        ], [
+            'name' => 'Default Tenant',
+            'settings' => null,
+            'is_active' => true,
         ]);
 
-        UserModel::factory()->admin()->forTenant($tenant)->create([
-            'name' => 'Admin User',
+        $adminUser = UserModel::query()->updateOrCreate([
             'email' => 'admin@example.com',
+        ], [
+            'name' => 'Admin User',
+            'tenant_id' => $tenant->id,
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'remember_token' => Str::random(10),
+            'created_at' => '2024-03-01 09:00:00',
+            'updated_at' => '2024-03-01 09:00:00',
         ]);
+        $this->syncRole($adminUser, 'admin');
 
-        UserModel::factory(9)->user()->forTenant($tenant)->create();
+        $this->call(UserExportDemoSeeder::class);
 
-        UserModel::factory()->superAdmin()->create([
-            'name' => 'Super Admin',
+        $superAdminUser = UserModel::query()->updateOrCreate([
             'email' => 'superadmin@example.com',
+        ], [
+            'name' => 'Super Admin',
+            'tenant_id' => null,
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'remember_token' => Str::random(10),
         ]);
+        $this->syncRole($superAdminUser, 'super_admin');
+    }
+
+    private function syncRole(UserModel $user, string $roleSlug): void
+    {
+        $roleId = RoleModel::query()
+            ->where('slug', $roleSlug)
+            ->value('id');
+
+        if ($roleId === null) {
+            return;
+        }
+
+        $user->roles()->syncWithoutDetaching([$roleId]);
     }
 }
