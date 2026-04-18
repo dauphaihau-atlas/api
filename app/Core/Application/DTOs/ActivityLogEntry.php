@@ -8,6 +8,11 @@ use DateTimeInterface;
 
 final readonly class ActivityLogEntry
 {
+    /**
+     * @param  array<string, mixed>|null  $properties
+     * @param  array<string, mixed>|null  $oldValues
+     * @param  array<string, mixed>|null  $newValues
+     */
     public function __construct(
         public int $id,
         public ?string $logName,
@@ -16,14 +21,11 @@ final readonly class ActivityLogEntry
         public int $subjectId,
         public ?string $causerType,
         public ?int $causerId,
-        /** @var array<string, mixed>|null */
         public ?array $properties,
         public DateTimeInterface $createdAt,
         public ?string $causerName = null,
         public ?string $causerEmail = null,
-        /** @var array<string, mixed>|null */
         public ?array $oldValues = null,
-        /** @var array<string, mixed>|null */
         public ?array $newValues = null,
     ) {}
 }

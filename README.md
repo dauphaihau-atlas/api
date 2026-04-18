@@ -36,6 +36,12 @@ A production-ready **API-only backend** built with Laravel 12, following Clean A
 - **Structured Request Logging** — Every API request is logged with `X-Request-Id` tracing, route name, duration (ms), user ID, and IP; log level scales with status code (info / warning / error); sensitive headers stripped before logging
 - **Built-in Web Dashboards** — Horizon for queue monitoring, Telescope for request/query/exception inspection, Scribe for auto-generated API documentation
 
+| Dashboard | URL | Description |
+|---|---|---|
+| Horizon | `https://api.atlas.local/horizon` | Queue monitoring and job metrics |
+| Telescope | `https://api.atlas.local/telescope` | Request, query, and exception inspection |
+| API Docs | `https://api.atlas.local/docs` | Auto-generated API documentation (Scribe) |
+
 ---
 
 ## Tech Stack
