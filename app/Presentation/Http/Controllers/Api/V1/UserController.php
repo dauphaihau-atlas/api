@@ -27,9 +27,11 @@ use App\Exceptions\ServiceUnavailableException;
 use App\Exceptions\ValidationException;
 use App\Presentation\Http\Controllers\Controller;
 use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
+use App\Presentation\Http\Requests\ExportUsersRequest as HttpExportUsersRequest;
 use App\Presentation\Http\Requests\ImportUsersRequest as HttpImportUsersRequest;
 use App\Presentation\Http\Resources\UserResource;
 use App\Presentation\Http\Responses\ApiResponse;
+use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -280,13 +282,28 @@ class UserController extends Controller
      *
      * @response 200 {"path":"exports/users-2025-01-01.csv","url":"http://localhost/api/v1/users/export/download?path=exports/users-2025-01-01.csv&signature=abc123","expires_at":"2025-01-01T00:15:00+00:00"}
      */
-    public function export(): JsonResponse
+    public function export(HttpExportUsersRequest $request): JsonResponse
     {
         /** @var \App\Infrastructure\Persistence\Eloquent\Models\UserModel $admin */
         $admin = auth()->user();
 
+        $dateFrom = $request->filled('date_from')
+            ? new DateTimeImmutable($request->input('date_from'))
+            : null;
+
+        $dateTo = $request->filled('date_to')
+            ? new DateTimeImmutable($request->input('date_to'))
+            : null;
+
+        $fields = $request->has('fields') ? $request->input('fields') : null;
+
         try {
-            $response = $this->exportUsersUseCase->execute(new ExportUsersUseCaseRequest($admin->id));
+            $response = $this->exportUsersUseCase->execute(new ExportUsersUseCaseRequest(
+                adminId: $admin->id,
+                dateFrom: $dateFrom,
+                dateTo: $dateTo,
+                fields: $fields,
+            ));
         } catch (RuntimeException $e) {
             Log::error('User export failed', ['error' => $e->getMessage()]);
             throw new ServiceUnavailableException(

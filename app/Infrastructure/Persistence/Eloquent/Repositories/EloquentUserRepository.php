@@ -9,6 +9,7 @@ use App\Core\Domain\Entities\User;
 use App\Infrastructure\Persistence\Eloquent\Models\RoleModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Infrastructure\Tenant\TenantContext;
+use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -89,6 +90,30 @@ class EloquentUserRepository implements UserRepositoryInterface
     public function findAll(): array
     {
         return $this->applyTenantScope(UserModel::with('roles'))
+            ->get()
+            ->map(fn (UserModel $model) => $this->toEntity($model))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return User[]
+     */
+    public function findAllWithDateRange(
+        ?DateTimeImmutable $dateFrom,
+        ?DateTimeImmutable $dateTo,
+    ): array {
+        $query = $this->applyTenantScope(UserModel::with('roles'));
+
+        if ($dateFrom !== null) {
+            $query->whereDate('created_at', '>=', $dateFrom->format('Y-m-d'));
+        }
+
+        if ($dateTo !== null) {
+            $query->whereDate('created_at', '<=', $dateTo->format('Y-m-d'));
+        }
+
+        return $query
             ->get()
             ->map(fn (UserModel $model) => $this->toEntity($model))
             ->values()

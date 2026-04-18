@@ -4,6 +4,7 @@ namespace App\Core\Application\Contracts;
 
 use App\Core\Application\DTOs\UserFilters;
 use App\Core\Domain\Entities\User;
+use DateTimeImmutable;
 
 interface UserRepositoryInterface
 {
@@ -25,6 +26,14 @@ interface UserRepositoryInterface
      * @return User[]
      */
     public function findAll(): array;
+
+    /**
+     * @return User[]
+     */
+    public function findAllWithDateRange(
+        ?DateTimeImmutable $dateFrom,
+        ?DateTimeImmutable $dateTo,
+    ): array;
 
     /**
      * @return User[]
