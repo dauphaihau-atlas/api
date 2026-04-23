@@ -249,6 +249,31 @@ class UserController extends Controller
     }
 
     /**
+     * Download import CSV template
+     *
+     * Returns a CSV file with the required headers and example rows for bulk user import.
+     * Requires admin role.
+     *
+     * @group Users
+     *
+     * @authenticated
+     *
+     * @response 200 scenario="CSV file download" {}
+     */
+    public function downloadImportTemplate(): StreamedResponse
+    {
+        return response()->streamDownload(function (): void {
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['name', 'email', 'password']);
+            fputcsv($output, ['John Doe', 'john@example.com', 'Password123!']);
+            fputcsv($output, ['Jane Smith', 'jane@example.com', 'Password456@']);
+            fclose($output);
+        }, 'users-import-template.csv', [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
+    /**
      * User stats
      *
      * Returns total user count and count of users created today. Values are cached for 5 minutes.

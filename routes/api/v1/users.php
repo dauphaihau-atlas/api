@@ -12,6 +12,9 @@ Route::get('users/stats', [UserController::class, 'stats'])
 Route::post('users', [UserController::class, 'store'])
     ->middleware('authorize.user:create');
 
+Route::get('users/import/template', [UserController::class, 'downloadImportTemplate'])
+    ->middleware('authorize.user:import');
+
 Route::middleware(['authorize.user:import', 'throttle.api:heavy'])->group(function (): void {
     Route::post('users/import', [UserController::class, 'import']);
     Route::get('users/import/{id}/status', [UserController::class, 'importStatus']);
