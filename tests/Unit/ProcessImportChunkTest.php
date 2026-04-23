@@ -4,11 +4,15 @@ namespace Tests\Unit;
 
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Application\Contracts\UserRepositoryInterface;
+use App\Infrastructure\Broadcasting\Events\ImportProgressUpdated;
 use App\Infrastructure\Persistence\Eloquent\Models\UserImportModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Jobs\ProcessImportChunk;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class ProcessImportChunkTest extends TestCase
@@ -126,5 +130,47 @@ class ProcessImportChunkTest extends TestCase
         $this->assertSame(1, $this->import->created_count);
         $this->assertCount(1, $this->import->errors);
         $this->assertDatabaseHas('users', ['email' => 'valid@test.com']);
+    }
+
+    public function test_continues_processing_when_progress_broadcast_fails(): void
+    {
+        $rows = [
+            ['name' => 'Alice', 'email' => 'alice@test.com', 'password' => 'password123'],
+        ];
+
+        $dispatcher = Mockery::mock(Dispatcher::class);
+        $dispatcher->shouldReceive('dispatch')
+            ->withAnyArgs()
+            ->andReturnNull()
+            ->byDefault();
+        $dispatcher->shouldReceive('dispatch')
+            ->once()
+            ->withArgs(function (object $event): bool {
+                return $event instanceof ImportProgressUpdated;
+            })
+            ->andThrow(new RuntimeException('Broadcast unavailable'));
+
+        $originalDispatcher = $this->app->make(Dispatcher::class);
+        $originalEventsBinding = $this->app->make('events');
+        $this->app->instance(Dispatcher::class, $dispatcher);
+        $this->app->instance('events', $dispatcher);
+
+        try {
+            $job = new ProcessImportChunk($this->import->id, $rows, 2);
+            $job->handle(
+                app(UserRepositoryInterface::class),
+                app(UserImportRepositoryInterface::class)
+            );
+        } finally {
+            $this->app->instance(Dispatcher::class, $originalDispatcher);
+            $this->app->instance('events', $originalEventsBinding);
+        }
+
+        $this->assertDatabaseHas('users', ['email' => 'alice@test.com', 'name' => 'Alice']);
+
+        $this->import->refresh();
+        $this->assertSame(1, $this->import->processed_rows);
+        $this->assertSame(1, $this->import->created_count);
+        $this->assertSame(0, $this->import->updated_count);
     }
 }

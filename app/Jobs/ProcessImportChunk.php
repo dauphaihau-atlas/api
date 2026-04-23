@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ProcessImportChunk implements ShouldQueue
 {
@@ -99,15 +100,23 @@ class ProcessImportChunk implements ShouldQueue
                 ? round(($freshImport->getProcessedRows() / $freshImport->getTotalRows()) * 100, 2)
                 : 0;
 
-            ImportProgressUpdated::dispatch(
-                $this->importId,
-                $freshImport->getTotalRows(),
-                $freshImport->getProcessedRows(),
-                $freshImport->getCreatedCount(),
-                $freshImport->getUpdatedCount(),
-                count($freshImport->getErrors()),
-                $percentage
-            );
+            try {
+                ImportProgressUpdated::dispatch(
+                    $this->importId,
+                    $freshImport->getTotalRows(),
+                    $freshImport->getProcessedRows(),
+                    $freshImport->getCreatedCount(),
+                    $freshImport->getUpdatedCount(),
+                    count($freshImport->getErrors()),
+                    $percentage
+                );
+            } catch (Throwable $exception) {
+                Log::warning('Import progress broadcast failed', [
+                    'import_id' => $this->importId,
+                    'exception' => $exception::class,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
         }
 
         Log::info('Import chunk processed', [
