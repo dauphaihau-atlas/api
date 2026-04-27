@@ -14,3 +14,4 @@ Schedule::command('app:prune-telescope --hours=48')->daily();
 Schedule::command('app:cache-warm')->dailyAt('03:00');
 Schedule::command('app:prune-imports --days=30')->weekly();
 Schedule::command('app:prune-activity-logs --days=90')->monthly();
+Schedule::command('app:prune-idempotency-keys')->hourly();
