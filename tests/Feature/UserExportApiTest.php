@@ -48,8 +48,9 @@ class UserExportApiTest extends TestCase
     public function test_users_export_returns_200_with_path_and_url_when_admin(): void
     {
         ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
-        $response = $this->get('/api/v1/users/export', $this->tenantHeaders($tenant, $token));
+        $response = $this->get('/api/v1/users/export', $headers);
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -72,8 +73,9 @@ class UserExportApiTest extends TestCase
     public function test_signed_download_returns_csv_content(): void
     {
         ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $exportHeaders = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
-        $exportResponse = $this->get('/api/v1/users/export', $this->tenantHeaders($tenant, $token));
+        $exportResponse = $this->get('/api/v1/users/export', $exportHeaders);
         $exportResponse->assertStatus(200);
         $url = $exportResponse->json('data.url');
         $this->assertNotEmpty($url);
@@ -103,10 +105,11 @@ class UserExportApiTest extends TestCase
             'tenant_id' => $tenant->id,
             'created_at' => '2025-03-01 10:00:00',
         ]);
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
         $response = $this->get(
             '/api/v1/users/export?date_from=2025-01-01',
-            $this->tenantHeaders($tenant, $token)
+            $headers
         );
 
         $response->assertStatus(200);
@@ -129,10 +132,11 @@ class UserExportApiTest extends TestCase
             'tenant_id' => $tenant->id,
             'created_at' => '2025-03-01 10:00:00',
         ]);
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
         $response = $this->get(
             '/api/v1/users/export?date_to=2024-12-31',
-            $this->tenantHeaders($tenant, $token)
+            $headers
         );
 
         $response->assertStatus(200);
@@ -159,10 +163,11 @@ class UserExportApiTest extends TestCase
             'tenant_id' => $tenant->id,
             'created_at' => '2025-01-01 00:00:00',
         ]);
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
         $response = $this->get(
             '/api/v1/users/export?date_from=2024-01-01&date_to=2024-12-31',
-            $this->tenantHeaders($tenant, $token)
+            $headers
         );
 
         $response->assertStatus(200);
@@ -176,10 +181,11 @@ class UserExportApiTest extends TestCase
     public function test_export_returns_422_for_invalid_date_format(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
         $response = $this->getJson(
             '/api/v1/users/export?date_from=01-01-2025',
-            $this->tenantHeaders($tenant, $token)
+            $headers
         );
 
         $response->assertStatus(422);
@@ -189,10 +195,11 @@ class UserExportApiTest extends TestCase
     public function test_export_returns_422_when_date_to_before_date_from(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
         $response = $this->getJson(
             '/api/v1/users/export?date_from=2025-06-01&date_to=2025-01-01',
-            $this->tenantHeaders($tenant, $token)
+            $headers
         );
 
         $response->assertStatus(422);
@@ -204,10 +211,11 @@ class UserExportApiTest extends TestCase
     public function test_export_includes_only_selected_fields(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
         $response = $this->get(
             '/api/v1/users/export?fields[]=id&fields[]=email',
-            $this->tenantHeaders($tenant, $token)
+            $headers
         );
 
         $response->assertStatus(200);
@@ -224,10 +232,11 @@ class UserExportApiTest extends TestCase
     public function test_export_returns_422_for_invalid_field_name(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
         $response = $this->getJson(
             '/api/v1/users/export?fields[]=invalid_field',
-            $this->tenantHeaders($tenant, $token)
+            $headers
         );
 
         $response->assertStatus(422);
@@ -237,8 +246,9 @@ class UserExportApiTest extends TestCase
     public function test_export_returns_all_fields_when_fields_param_omitted(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
-        $response = $this->get('/api/v1/users/export', $this->tenantHeaders($tenant, $token));
+        $response = $this->get('/api/v1/users/export', $headers);
 
         $response->assertStatus(200);
         $path = $response->json('data.path');

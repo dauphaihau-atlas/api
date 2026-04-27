@@ -49,8 +49,9 @@ class UserImportApiTest extends TestCase
     public function test_users_import_returns_422_when_file_missing_or_invalid(): void
     {
         ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
-        $response = $this->post('/api/v1/users/import', [], $this->tenantHeaders($tenant, $token));
+        $response = $this->post('/api/v1/users/import', [], $headers);
 
         $response->assertStatus(422);
     }
@@ -59,10 +60,9 @@ class UserImportApiTest extends TestCase
     {
         ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
         $file = UploadedFile::fake()->image('photo.jpg', 100, 100);
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
-        $response = $this->post('/api/v1/users/import', [
-            'file' => $file,
-        ], $this->tenantHeaders($tenant, $token));
+        $response = $this->post('/api/v1/users/import', ['file' => $file], $headers);
 
         $response->assertStatus(422);
     }
@@ -72,10 +72,9 @@ class UserImportApiTest extends TestCase
         ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
         $csv = "name,email,password\nAlice One,alice@example.com,password123\nBob Two,bob@example.com,secret456";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
-        $response = $this->post('/api/v1/users/import', [
-            'file' => $file,
-        ], $this->tenantHeaders($tenant, $token));
+        $response = $this->post('/api/v1/users/import', ['file' => $file], $headers);
 
         $response->assertStatus(202);
         $response->assertJsonStructure(['data' => ['id', 'status'], 'message']);
@@ -101,10 +100,9 @@ class UserImportApiTest extends TestCase
         ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
         $csv = "foo,bar\nAlice,alice@example.com";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
+        $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
-        $response = $this->post('/api/v1/users/import', [
-            'file' => $file,
-        ], $this->tenantHeaders($tenant, $token));
+        $response = $this->post('/api/v1/users/import', ['file' => $file], $headers);
 
         $response->assertStatus(422);
         $this->assertStringContainsString('headers', strtolower($response->json('message')));

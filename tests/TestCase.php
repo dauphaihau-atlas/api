@@ -62,4 +62,13 @@ abstract class TestCase extends BaseTestCase
             'X-Tenant-ID' => $tenant->slug,
         ];
     }
+
+    /**
+     * Return a valid idempotency key for use in tests.
+     * The key satisfies the 16–255 character requirement and allowed charset.
+     */
+    protected function idempotencyKey(string $suffix = '0000000001'): string
+    {
+        return 'test-key-'.$suffix;
+    }
 }
