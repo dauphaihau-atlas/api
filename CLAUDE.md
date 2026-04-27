@@ -20,6 +20,26 @@ php artisan test tests/Feature/UserImportApiTest.php # Run single test file
 vendor/bin/pint        # Code formatting (Laravel preset)
 ```
 
+## Maintenance Commands
+
+Run inside the Docker container (`docker compose exec app php artisan <command>`):
+
+```bash
+# Operations / recovery
+php artisan app:report-import-stats          # Summary of import activity (last 30 days)
+php artisan app:retry-failed-imports         # Reset recently failed imports to pending
+php artisan app:cancel-stale-imports         # Mark stuck pending/processing imports as failed
+php artisan app:cache-warm                   # Pre-populate Redis user-stats cache
+
+# Pruning (all support --dry-run to preview)
+php artisan app:prune-imports                # Delete completed/failed imports older than 30 days
+php artisan app:prune-activity-logs          # Delete activity logs older than 90 days
+php artisan app:prune-telescope              # Delete Telescope entries older than 48 hours
+php artisan app:prune-password-resets        # Delete expired password reset tokens (>24 h)
+```
+
+These are also scheduled via `routes/console.php` (scheduler must be running in the container).
+
 ## Architecture (Clean Architecture)
 
 Four layers with strict dependency rules (inner layers never depend on outer):

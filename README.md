@@ -318,6 +318,45 @@ php artisan test tests/Feature/UserImportApiTest.php       # Single file
 
 ---
 
+## Maintenance Commands
+
+All commands run inside the Docker container:
+
+```bash
+docker compose exec app php artisan <command>
+```
+
+### Operations
+
+```bash
+# Print import activity summary (last 30 days)
+php artisan app:report-import-stats
+
+# Reset recently failed imports back to pending for re-processing
+php artisan app:retry-failed-imports
+
+# Mark imports stuck in pending/processing for > 2 h as failed
+php artisan app:cancel-stale-imports
+
+# Pre-populate Redis user-stats cache after a cold deploy or cache flush
+php artisan app:cache-warm
+```
+
+### Pruning
+
+All prune commands accept `--dry-run` to preview what would be deleted.
+
+```bash
+php artisan app:prune-imports           # Completed/failed imports older than 30 days (records + CSV files)
+php artisan app:prune-activity-logs     # Activity log entries older than 90 days
+php artisan app:prune-telescope         # Telescope debug entries older than 48 hours
+php artisan app:prune-password-resets   # Expired password reset tokens (> 24 h)
+```
+
+These are scheduled automatically via `routes/console.php` when the Laravel scheduler is running in the container.
+
+---
+
 ## Code Style
 
 ```bash
