@@ -16,12 +16,12 @@ Route::get('users/import/template', [UserController::class, 'downloadImportTempl
     ->middleware('authorize.user:import');
 
 Route::middleware(['authorize.user:import', 'throttle.api:heavy'])->group(function (): void {
-    Route::post('users/import', [UserController::class, 'import']);
+    Route::post('users/import', [UserController::class, 'import'])->middleware('idempotency');
     Route::get('users/import/{id}/status', [UserController::class, 'importStatus']);
 });
 
 Route::middleware(['authorize.user:export', 'throttle.api:heavy'])->group(function (): void {
-    Route::get('users/export', [UserController::class, 'export']);
+    Route::get('users/export', [UserController::class, 'export'])->middleware('idempotency');
     Route::get('users/export/last', [UserController::class, 'lastExport']);
 });
 

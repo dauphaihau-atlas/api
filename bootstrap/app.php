@@ -9,6 +9,7 @@ use App\Presentation\Http\Middleware\AuthorizeTenant;
 use App\Presentation\Http\Middleware\AuthorizeUser;
 use App\Presentation\Http\Middleware\CacheControlMiddleware;
 use App\Presentation\Http\Middleware\DeprecatedApiVersion;
+use App\Presentation\Http\Middleware\IdempotencyMiddleware;
 use App\Presentation\Http\Middleware\LogApiRequests;
 use App\Presentation\Http\Middleware\RateLimitMiddleware;
 use App\Presentation\Http\Middleware\ResolveTenant;
@@ -60,6 +61,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'resolve.tenant' => ResolveTenant::class,
             'resolve.tenant.optional' => ResolveTenantOptional::class,
             'authorize.tenant' => AuthorizeTenant::class,
+            'idempotency' => IdempotencyMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
