@@ -10,7 +10,7 @@ use App\Infrastructure\Tenant\TenantContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
-class UserModelObserver
+class UserActivityLogObserver
 {
     public function __construct(
         private readonly TenantContext $tenantContext
@@ -18,15 +18,11 @@ class UserModelObserver
 
     private const LOG_NAME = 'default';
 
-    /**
-     * Attributes that must never be stored in activity log properties.
-     */
+    /** @var array<int, string> */
     private const SENSITIVE_ATTRIBUTES = ['password', 'remember_token'];
 
     public function created(UserModel $model): void
     {
-        Cache::tags(['users'])->flush();
-        Cache::increment('version:users');
         $this->log('created', $model, oldValues: null, newValues: $this->safeSnapshot($model));
     }
 
@@ -36,28 +32,21 @@ class UserModelObserver
         if ($changes === []) {
             return;
         }
-        Cache::increment('version:users');
         $this->log('updated', $model, oldValues: $changes['old'], newValues: $changes['new']);
     }
 
     public function deleted(UserModel $model): void
     {
-        Cache::tags(['users'])->flush();
-        Cache::increment('version:users');
         $this->log('deleted', $model, oldValues: $this->safeSnapshot($model), newValues: null);
     }
 
     public function restored(UserModel $model): void
     {
-        Cache::tags(['users'])->flush();
-        Cache::increment('version:users');
         $this->log('restored', $model, oldValues: null, newValues: $this->safeSnapshot($model));
     }
 
     public function forceDeleted(UserModel $model): void
     {
-        Cache::tags(['users'])->flush();
-        Cache::increment('version:users');
         $this->log('force_deleted', $model, oldValues: $this->safeSnapshot($model), newValues: null);
     }
 
@@ -80,8 +69,6 @@ class UserModelObserver
     }
 
     /**
-     * Safe snapshot: only non-sensitive attributes.
-     *
      * @return array<string, mixed>
      */
     private function safeSnapshot(UserModel $model): array
@@ -97,8 +84,6 @@ class UserModelObserver
     }
 
     /**
-     * For updated: old and new values for changed attributes only, excluding sensitive ones.
-     *
      * @return array{old: array<string, mixed>, new: array<string, mixed>}|array{}
      */
     private function getSafeChanges(UserModel $model): array

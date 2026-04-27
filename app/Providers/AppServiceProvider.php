@@ -5,7 +5,8 @@ namespace App\Providers;
 use App\Infrastructure\Persistence\Eloquent\Models\ActivityLogModel;
 use App\Infrastructure\Persistence\Eloquent\Models\TenantModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
-use App\Infrastructure\Persistence\Eloquent\Observers\UserModelObserver;
+use App\Infrastructure\Persistence\Eloquent\Observers\UserActivityLogObserver;
+use App\Infrastructure\Persistence\Eloquent\Observers\UserCacheObserver;
 use App\Presentation\Http\Policies\ActivityLogPolicy;
 use App\Presentation\Http\Policies\TenantPolicy;
 use App\Presentation\Http\Policies\UserPolicy;
@@ -54,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ActivityLogModel::class, ActivityLogPolicy::class);
         Gate::policy(TenantModel::class, TenantPolicy::class);
 
-        UserModel::observe(UserModelObserver::class);
+        UserModel::observe(UserCacheObserver::class);
+        UserModel::observe(UserActivityLogObserver::class);
     }
 }
