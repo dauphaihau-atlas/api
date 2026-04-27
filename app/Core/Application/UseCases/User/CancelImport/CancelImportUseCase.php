@@ -6,9 +6,9 @@ namespace App\Core\Application\UseCases\User\CancelImport;
 
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Domain\Enums\ImportStatus;
+use App\Events\ImportCompleted;
 use App\Exceptions\ConflictException;
 use App\Exceptions\NotFoundException;
-use App\Infrastructure\Broadcasting\Events\ImportCompleted;
 use Illuminate\Support\Facades\Bus;
 
 class CancelImportUseCase
@@ -35,15 +35,8 @@ class CancelImportUseCase
 
         $this->importRepository->updateStatus($import->getId(), ImportStatus::Cancelled);
 
-        ImportCompleted::dispatch(
-            $import->getId(),
-            ImportStatus::Cancelled->value,
-            $import->getTotalRows(),
-            $import->getProcessedRows(),
-            $import->getCreatedCount(),
-            $import->getUpdatedCount(),
-            $import->getErrors()
-        );
+        $import->markAsCancelled();
+        ImportCompleted::dispatch($import);
 
         return new CancelImportResponse($import->getId(), ImportStatus::Cancelled->value);
     }

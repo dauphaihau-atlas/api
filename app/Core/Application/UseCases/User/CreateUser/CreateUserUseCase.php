@@ -2,10 +2,10 @@
 
 namespace App\Core\Application\UseCases\User\CreateUser;
 
-use App\Core\Application\Contracts\UserCreatedNotifierInterface;
 use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Domain\Entities\User;
 use App\Core\Domain\ValueObjects\Email;
+use App\Events\UserCreated;
 use App\Exceptions\ConflictException;
 use App\Exceptions\InternalServerException;
 use Illuminate\Support\Facades\Hash;
@@ -13,8 +13,7 @@ use Illuminate\Support\Facades\Hash;
 class CreateUserUseCase
 {
     public function __construct(
-        private readonly UserRepositoryInterface $userRepository,
-        private readonly UserCreatedNotifierInterface $userCreatedNotifier
+        private readonly UserRepositoryInterface $userRepository
     ) {}
 
     public function execute(CreateUserRequest $request): CreateUserResponse
@@ -39,11 +38,7 @@ class CreateUserUseCase
             throw new InternalServerException('User was saved but ID was not returned');
         }
 
-        $this->userCreatedNotifier->notifyUserCreated(
-            $id,
-            $savedUser->getName(),
-            $savedUser->getEmail()->getValue()
-        );
+        UserCreated::dispatch($savedUser);
 
         return new CreateUserResponse(
             id: $id,

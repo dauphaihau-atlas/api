@@ -5,6 +5,7 @@ namespace App\Core\Application\UseCases\User\ImportUsers;
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Domain\Entities\UserImport;
 use App\Core\Domain\Enums\ImportStatus;
+use App\Events\ImportCompleted;
 use App\Infrastructure\Tenant\TenantContext;
 use App\Jobs\ProcessImportChunk;
 use Illuminate\Bus\Batch;
@@ -83,15 +84,7 @@ class ImportUsersUseCase
 
                 $import = $repo->findById($importId);
                 if ($import !== null) {
-                    \App\Infrastructure\Broadcasting\Events\ImportCompleted::dispatch(
-                        $importId,
-                        ImportStatus::Completed->value,
-                        $import->getTotalRows(),
-                        $import->getProcessedRows(),
-                        $import->getCreatedCount(),
-                        $import->getUpdatedCount(),
-                        $import->getErrors()
-                    );
+                    ImportCompleted::dispatch($import);
                 }
             })
             ->catch(function (Batch $batch, Throwable $e) use ($importId): void {
@@ -105,15 +98,7 @@ class ImportUsersUseCase
 
                 $import = $repo->findById($importId);
                 if ($import !== null) {
-                    \App\Infrastructure\Broadcasting\Events\ImportCompleted::dispatch(
-                        $importId,
-                        ImportStatus::Failed->value,
-                        $import->getTotalRows(),
-                        $import->getProcessedRows(),
-                        $import->getCreatedCount(),
-                        $import->getUpdatedCount(),
-                        $import->getErrors()
-                    );
+                    ImportCompleted::dispatch($import);
                 }
             })
             ->dispatch();

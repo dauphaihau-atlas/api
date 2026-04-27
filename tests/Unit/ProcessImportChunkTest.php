@@ -4,7 +4,7 @@ namespace Tests\Unit;
 
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Application\Contracts\UserRepositoryInterface;
-use App\Infrastructure\Broadcasting\Events\ImportProgressUpdated;
+use App\Events\ImportChunkProcessed;
 use App\Infrastructure\Persistence\Eloquent\Models\UserImportModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Jobs\ProcessImportChunk;
@@ -146,7 +146,7 @@ class ProcessImportChunkTest extends TestCase
         $dispatcher->shouldReceive('dispatch')
             ->once()
             ->withArgs(function (object $event): bool {
-                return $event instanceof ImportProgressUpdated;
+                return $event instanceof ImportChunkProcessed;
             })
             ->andThrow(new RuntimeException('Broadcast unavailable'));
 

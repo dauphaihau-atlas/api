@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
 use App\Core\Application\Contracts\UserRepositoryInterface;
-use App\Infrastructure\Broadcasting\Events\ImportProgressUpdated;
+use App\Events\ImportChunkProcessed;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -96,20 +96,8 @@ class ProcessImportChunk implements ShouldQueue
 
         $freshImport = $importRepository->findById($this->importId);
         if ($freshImport !== null) {
-            $percentage = $freshImport->getTotalRows() > 0
-                ? round(($freshImport->getProcessedRows() / $freshImport->getTotalRows()) * 100, 2)
-                : 0;
-
             try {
-                ImportProgressUpdated::dispatch(
-                    $this->importId,
-                    $freshImport->getTotalRows(),
-                    $freshImport->getProcessedRows(),
-                    $freshImport->getCreatedCount(),
-                    $freshImport->getUpdatedCount(),
-                    count($freshImport->getErrors()),
-                    $percentage
-                );
+                ImportChunkProcessed::dispatch($freshImport);
             } catch (Throwable $exception) {
                 Log::warning('Import progress broadcast failed', [
                     'import_id' => $this->importId,
