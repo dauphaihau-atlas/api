@@ -29,6 +29,7 @@ A production-ready **API-only backend** built with Laravel 12, following Clean A
 - **Notifications** — `UserCreatedNotification` dispatched on user creation via a `UserCreatedNotifierInterface` contract
 
 **Data Management**
+- **Optimistic Locking** — Integer `version` column on `users` and `tenants`; every update increments the version atomically (`WHERE id = ? AND version = ?`). Use cases perform an early version check for a clear 409 conflict message; the repository's conditional update catches true concurrent writes. Returns `409 Conflict` with `error_code: VERSION_CONFLICT` on mismatch
 - **Soft Deletes** — Trash / restore / force-delete lifecycle on users with filter support
 - **Full-Text Search** — PostgreSQL `tsquery` with GIN indexes on users; `LIKE` fallback for other databases
 - **File Storage** — Avatar upload, CSV import ingestion, and export generation; configurable between local disk and MinIO (S3-compatible)
@@ -158,6 +159,7 @@ All routes are prefixed `/v1` with `throttle:api` (60 req/min).
 | `POST` | `/v1/login` | — | Login (5 req/min) |
 | `POST` | `/v1/logout` | ✓ | Revoke current token |
 | `GET` | `/v1/me` | ✓ | Authenticated user details |
+| `PATCH` | `/v1/me` | ✓ | Update own profile (requires `version`) |
 | `POST` | `/v1/me/avatar` | ✓ | Upload own avatar |
 
 ### Users (admin-gated)
@@ -167,6 +169,7 @@ All routes are prefixed `/v1` with `throttle:api` (60 req/min).
 | `GET` | `/v1/users` | ✓ admin | Paginated list with search + sort |
 | `GET` | `/v1/users/stats` | ✓ admin | Total active / deleted / created today |
 | `POST` | `/v1/users` | ✓ admin | Create user |
+| `PATCH` | `/v1/users/{id}` | ✓ admin | Update user (requires `version`) |
 | `DELETE` | `/v1/users/{id}` | ✓ admin | Soft delete |
 | `POST` | `/v1/users/{id}/restore` | ✓ admin | Restore soft-deleted user |
 | `DELETE` | `/v1/users/{id}/force` | ✓ admin | Permanent delete |
@@ -325,11 +328,11 @@ Set to `minio` (or any S3-compatible config) for cloud storage.
 
 ### Entities
 
-**`User`** — id, name, email (`Email` VO), password, avatarPath, roles (`Role[]`), tenantId, timestamps, deletedAt
+**`User`** — id, name, email (`Email` VO), password, avatarPath, roles (`Role[]`), tenantId, version, timestamps, deletedAt
 
 **`Role`** — id, name, slug, description
 
-**`Tenant`** — id, name, slug, settings (JSON), isActive, timestamps. Users belong to a single tenant; admins can operate cross-tenant via super_admin role.
+**`Tenant`** — id, name, slug, settings (JSON), isActive, version, timestamps. Users belong to a single tenant; admins can operate cross-tenant via super_admin role.
 
 **`UserImport`** — id, batchId, filePath, status (`pending|processing|completed|failed|cancelled`), totalRows, processedRows, createdCount, updatedCount, errors[], tenantId, timestamps
 
