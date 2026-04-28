@@ -149,6 +149,7 @@ class TenantApiTest extends TestCase
         $tenant = TenantModel::factory()->create(['name' => 'Old Name']);
 
         $response = $this->putJson('/api/v1/tenants/'.$tenant->id, [
+            'version' => $tenant->version,
             'name' => 'New Name',
         ], [
             'Authorization' => 'Bearer '.$token,
@@ -157,7 +158,8 @@ class TenantApiTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.name', 'New Name');
-        $this->assertDatabaseHas('tenants', ['id' => $tenant->id, 'name' => 'New Name']);
+        $response->assertJsonPath('data.version', 2);
+        $this->assertDatabaseHas('tenants', ['id' => $tenant->id, 'name' => 'New Name', 'version' => 2]);
     }
 
     public function test_update_tenant_returns_404_for_nonexistent(): void
@@ -165,6 +167,7 @@ class TenantApiTest extends TestCase
         ['token' => $token] = $this->createSuperAdmin();
 
         $response = $this->putJson('/api/v1/tenants/99999', [
+            'version' => 1,
             'name' => 'New Name',
         ], [
             'Authorization' => 'Bearer '.$token,
@@ -180,6 +183,7 @@ class TenantApiTest extends TestCase
         $tenant = TenantModel::factory()->create(['settings' => ['theme' => 'dark']]);
 
         $response = $this->putJson('/api/v1/tenants/'.$tenant->id, [
+            'version' => $tenant->version,
             'name' => 'Updated Name',
         ], [
             'Authorization' => 'Bearer '.$token,
@@ -197,6 +201,7 @@ class TenantApiTest extends TestCase
         $tenant = TenantModel::factory()->create(['settings' => ['theme' => 'dark']]);
 
         $response = $this->putJson('/api/v1/tenants/'.$tenant->id, [
+            'version' => $tenant->version,
             'settings' => null,
         ], [
             'Authorization' => 'Bearer '.$token,
@@ -214,6 +219,7 @@ class TenantApiTest extends TestCase
         $tenant = TenantModel::factory()->create(['slug' => 'my-slug']);
 
         $response = $this->putJson('/api/v1/tenants/'.$tenant->id, [
+            'version' => $tenant->version,
             'slug' => 'taken-slug',
         ], [
             'Authorization' => 'Bearer '.$token,
@@ -222,6 +228,38 @@ class TenantApiTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['slug']);
+    }
+
+    public function test_update_missing_version_returns_422(): void
+    {
+        ['token' => $token] = $this->createSuperAdmin();
+        $tenant = TenantModel::factory()->create();
+
+        $response = $this->putJson('/api/v1/tenants/'.$tenant->id, [
+            'name' => 'No Version',
+        ], [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['version']);
+    }
+
+    public function test_update_stale_version_returns_409(): void
+    {
+        ['token' => $token] = $this->createSuperAdmin();
+        $tenant = TenantModel::factory()->create();
+
+        $response = $this->putJson('/api/v1/tenants/'.$tenant->id, [
+            'version' => 999,
+            'name' => 'Stale',
+        ], [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(409);
     }
 
     public function test_regular_admin_cannot_update_tenant(): void
