@@ -17,7 +17,8 @@ class User
         private ?int $tenantId = null,
         private ?DateTimeImmutable $createdAt = null,
         private ?DateTimeImmutable $updatedAt = null,
-        private ?DateTimeImmutable $deletedAt = null
+        private ?DateTimeImmutable $deletedAt = null,
+        private int $version = 1,
     ) {
         $this->createdAt = $createdAt ?? new DateTimeImmutable;
         $this->updatedAt = $updatedAt ?? new DateTimeImmutable;
@@ -90,6 +91,11 @@ class User
     public function getDeletedAt(): ?DateTimeImmutable
     {
         return $this->deletedAt;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function updateAvatarPath(?string $path): void
