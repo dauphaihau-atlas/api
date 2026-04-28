@@ -1,6 +1,8 @@
 *.log
 .DS_Store
-# .env is tracked; only staging/prod env files are ignored
+.env
+.env.*
+!.env.example
 .env.stg
 .env.prod
 .env.backup
