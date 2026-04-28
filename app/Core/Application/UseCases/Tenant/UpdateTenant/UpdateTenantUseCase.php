@@ -21,6 +21,13 @@ class UpdateTenantUseCase
             throw new NotFoundException('Tenant not found');
         }
 
+        if ($request->version !== $tenant->getVersion()) {
+            throw new ConflictException(
+                'Tenant has been modified by another request. Please refresh and retry.',
+                'VERSION_CONFLICT',
+            );
+        }
+
         if ($request->name !== null) {
             $tenant->updateName($request->name);
         }
@@ -48,6 +55,7 @@ class UpdateTenantUseCase
             slug: $saved->getSlug(),
             settings: $saved->getSettings(),
             isActive: $saved->isActive(),
+            version: $saved->getVersion(),
             updatedAt: $saved->getUpdatedAt(),
         );
     }
