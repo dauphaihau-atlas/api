@@ -33,6 +33,7 @@ class UserResource extends JsonResource
                 'avatar_url' => $avatarUrl,
                 'roles' => array_map(fn (Role $r) => $r->getSlug(), $this->resource->getRoles()),
                 'tenant_id' => $this->resource->getTenantId(),
+                'version' => $this->resource->getVersion(),
                 'created_at' => $this->resource->getCreatedAt()?->format('Y-m-d H:i:s'),
             ];
 

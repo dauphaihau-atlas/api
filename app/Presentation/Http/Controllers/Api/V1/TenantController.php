@@ -94,6 +94,7 @@ class TenantController extends Controller
 
         $response = $this->updateTenantUseCase->execute(new UpdateTenantUseCaseRequest(
             id: $id,
+            version: (int) $validated['version'],
             name: $validated['name'] ?? null,
             slug: $validated['slug'] ?? null,
             settings: $validated['settings'] ?? null,
@@ -107,6 +108,7 @@ class TenantController extends Controller
             slug: $response->slug,
             settings: $response->settings,
             isActive: $response->isActive,
+            version: $response->version,
         );
 
         return ApiResponse::ok(new TenantResource($tenant));

@@ -29,6 +29,9 @@ Route::delete('users/import/{id}', [UserController::class, 'cancelImport'])
     ->middleware('authorize.user:cancelImport')
     ->where('id', '[0-9]+');
 
+Route::patch('users/{id}', [UserController::class, 'update'])
+    ->middleware('authorize.user:adminUpdate')
+    ->where('id', '[0-9]+');
 Route::delete('users/{id}', [UserController::class, 'destroy'])
     ->middleware('authorize.user:delete')
     ->where('id', '[0-9]+');

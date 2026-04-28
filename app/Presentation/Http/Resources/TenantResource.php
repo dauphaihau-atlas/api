@@ -21,6 +21,7 @@ class TenantResource extends JsonResource
             'slug' => $tenant->getSlug(),
             'settings' => $tenant->getSettings(),
             'is_active' => $tenant->isActive(),
+            'version' => $tenant->getVersion(),
             'created_at' => $tenant->getCreatedAt()->format('Y-m-d H:i:s'),
             'updated_at' => $tenant->getUpdatedAt()->format('Y-m-d H:i:s'),
         ];

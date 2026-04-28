@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateTenantRequest extends FormRequest
+class UpdateProfileRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -13,14 +15,11 @@ class UpdateTenantRequest extends FormRequest
 
     public function rules(): array
     {
-        $tenantId = $this->route('id');
-
         return [
             'version' => ['required', 'integer', 'min:1'],
             'name' => ['sometimes', 'string', 'max:255'],
-            'slug' => ['sometimes', 'string', 'max:100', 'alpha_dash', 'unique:tenants,slug,'.$tenantId],
-            'settings' => ['nullable', 'array'],
-            'is_active' => ['sometimes', 'boolean'],
+            'email' => ['sometimes', 'email', 'max:255'],
+            'password' => ['sometimes', 'string', 'min:8'],
         ];
     }
 }

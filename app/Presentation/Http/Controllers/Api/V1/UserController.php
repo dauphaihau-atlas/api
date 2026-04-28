@@ -22,6 +22,8 @@ use App\Core\Application\UseCases\User\ListUsers\ListUsersRequest;
 use App\Core\Application\UseCases\User\ListUsers\ListUsersUseCase;
 use App\Core\Application\UseCases\User\RestoreUser\RestoreUserRequest;
 use App\Core\Application\UseCases\User\RestoreUser\RestoreUserUseCase;
+use App\Core\Application\UseCases\User\UpdateUser\UpdateUserRequest as UpdateUserUseCaseRequest;
+use App\Core\Application\UseCases\User\UpdateUser\UpdateUserUseCase;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ServiceUnavailableException;
 use App\Exceptions\ValidationException;
@@ -29,6 +31,7 @@ use App\Presentation\Http\Controllers\Controller;
 use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
 use App\Presentation\Http\Requests\ExportUsersRequest as HttpExportUsersRequest;
 use App\Presentation\Http\Requests\ImportUsersRequest as HttpImportUsersRequest;
+use App\Presentation\Http\Requests\UpdateUserRequest as HttpUpdateUserRequest;
 use App\Presentation\Http\Resources\UserResource;
 use App\Presentation\Http\Responses\ApiResponse;
 use DateTimeImmutable;
@@ -47,6 +50,7 @@ class UserController extends Controller
 {
     public function __construct(
         private readonly CreateUserUseCase $createUserUseCase,
+        private readonly UpdateUserUseCase $updateUserUseCase,
         private readonly ImportUsersUseCase $importUsersUseCase,
         private readonly CancelImportUseCase $cancelImportUseCase,
         private readonly GetImportStatusUseCase $getImportStatusUseCase,
@@ -437,6 +441,30 @@ class UserController extends Controller
      * @urlParam id integer required The user ID. Example: 1
      *
      * @response 200 {"data":null,"message":"User deleted successfully"}
+     * @response 404 {"message":"User not found"}
+     */
+    public function update(HttpUpdateUserRequest $request, int $id): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $response = $this->updateUserUseCase->execute(new UpdateUserUseCaseRequest(
+            id: $id,
+            version: (int) $validated['version'],
+            name: $validated['name'] ?? null,
+            email: $validated['email'] ?? null,
+            password: $validated['password'] ?? null,
+        ));
+
+        return ApiResponse::ok([
+            'id' => $response->id,
+            'name' => $response->name,
+            'email' => $response->email,
+            'version' => $response->version,
+            'updated_at' => $response->updatedAt->format('Y-m-d H:i:s'),
+        ], 'User updated successfully');
+    }
+
+    /**
      * @response 404 {"message":"User not found"}
      */
     public function destroy(int $id): JsonResponse

@@ -28,6 +28,11 @@ class UserPolicy
         return $this->isAdmin($user) || $user->getKey() === $target->getKey();
     }
 
+    public function adminUpdate(UserModel $user): bool
+    {
+        return $this->isAdmin($user);
+    }
+
     public function delete(UserModel $user): bool
     {
         return $this->isAdmin($user);

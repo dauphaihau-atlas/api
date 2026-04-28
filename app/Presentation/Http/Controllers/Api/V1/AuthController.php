@@ -9,12 +9,15 @@ use App\Core\Application\UseCases\Auth\LoginUser\LoginUserUseCase;
 use App\Core\Application\UseCases\Auth\LogoutUser\LogoutUserUseCase;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserRequest;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserUseCase;
+use App\Core\Application\UseCases\User\UpdateProfile\UpdateProfileRequest as UpdateProfileUseCaseRequest;
+use App\Core\Application\UseCases\User\UpdateProfile\UpdateProfileUseCase;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\UnauthorizedException;
 use App\Exceptions\ValidationException;
 use App\Presentation\Http\Controllers\Controller;
 use App\Presentation\Http\Requests\CreateUserRequest as HttpCreateUserRequest;
 use App\Presentation\Http\Requests\LoginRequest;
+use App\Presentation\Http\Requests\UpdateProfileRequest as HttpUpdateProfileRequest;
 use App\Presentation\Http\Resources\UserResource;
 use App\Presentation\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -28,8 +31,9 @@ class AuthController extends Controller
         private readonly LoginUserUseCase $loginUserUseCase,
         private readonly LogoutUserUseCase $logoutUserUseCase,
         private readonly CreateUserUseCase $createUserUseCase,
+        private readonly UpdateProfileUseCase $updateProfileUseCase,
         private readonly AuthServiceInterface $authService,
-        private readonly UserRepositoryInterface $userRepository
+        private readonly UserRepositoryInterface $userRepository,
     ) {}
 
     /**
@@ -169,5 +173,31 @@ class AuthController extends Controller
         }
 
         return ApiResponse::ok(new UserResource($user));
+    }
+
+    public function updateProfile(HttpUpdateProfileRequest $request): JsonResponse
+    {
+        $userId = $request->user()?->getAuthIdentifier();
+        if ($userId === null) {
+            throw new UnauthorizedException('Unauthenticated');
+        }
+
+        $validated = $request->validated();
+
+        $response = $this->updateProfileUseCase->execute(new UpdateProfileUseCaseRequest(
+            userId: (int) $userId,
+            version: (int) $validated['version'],
+            name: $validated['name'] ?? null,
+            email: $validated['email'] ?? null,
+            password: $validated['password'] ?? null,
+        ));
+
+        return ApiResponse::ok([
+            'id' => $response->id,
+            'name' => $response->name,
+            'email' => $response->email,
+            'version' => $response->version,
+            'updated_at' => $response->updatedAt->format('Y-m-d H:i:s'),
+        ], 'Profile updated successfully');
     }
 }
