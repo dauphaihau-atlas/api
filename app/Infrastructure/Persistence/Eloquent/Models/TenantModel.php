@@ -24,6 +24,7 @@ class TenantModel extends Model
         'slug',
         'settings',
         'is_active',
+        'version',
     ];
 
     protected function casts(): array

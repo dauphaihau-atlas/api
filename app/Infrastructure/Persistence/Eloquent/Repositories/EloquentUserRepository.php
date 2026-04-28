@@ -6,6 +6,7 @@ use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Application\DTOs\UserFilters;
 use App\Core\Domain\Entities\Role;
 use App\Core\Domain\Entities\User;
+use App\Exceptions\ConflictException;
 use App\Infrastructure\Persistence\Eloquent\Models\RoleModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Infrastructure\Tenant\TenantContext;
@@ -38,18 +39,42 @@ class EloquentUserRepository implements UserRepositoryInterface
         if ($user->getId() === null) {
             $model = new UserModel;
             $model->tenant_id = $this->tenantContext->getTenantId();
-        } else {
-            $model = UserModel::findOrFail($user->getId());
+            $model->name = $user->getName();
+            $model->email = $user->getEmail()->getValue();
+            if ($user->getPassword() !== null) {
+                $model->password = $user->getPassword();
+            }
+            $model->avatar_path = $user->getAvatarPath();
+            $model->save();
+            $model->load('roles');
+
+            return $this->toEntity($model);
         }
 
-        $model->name = $user->getName();
-        $model->email = $user->getEmail()->getValue();
+        $data = [
+            'name' => $user->getName(),
+            'email' => $user->getEmail()->getValue(),
+            'avatar_path' => $user->getAvatarPath(),
+            'version' => DB::raw('version + 1'),
+            'updated_at' => now(),
+        ];
+
         if ($user->getPassword() !== null) {
-            $model->password = $user->getPassword();
+            $data['password'] = $user->getPassword();
         }
-        $model->avatar_path = $user->getAvatarPath();
-        $model->save();
-        $model->load('roles');
+
+        $affected = UserModel::where('id', $user->getId())
+            ->where('version', $user->getVersion())
+            ->update($data);
+
+        if ($affected === 0) {
+            throw new ConflictException(
+                'User has been modified by another request. Please refresh and retry.',
+                'VERSION_CONFLICT',
+            );
+        }
+
+        $model = $this->applyTenantScope(UserModel::with('roles'))->findOrFail($user->getId());
 
         return $this->toEntity($model);
     }
@@ -300,6 +325,7 @@ class EloquentUserRepository implements UserRepositoryInterface
             createdAt: $model->created_at?->toDateTimeImmutable(),
             updatedAt: $model->updated_at?->toDateTimeImmutable(),
             deletedAt: $model->deleted_at?->toDateTimeImmutable(),
+            version: $model->version ?? 1,
         );
     }
 }

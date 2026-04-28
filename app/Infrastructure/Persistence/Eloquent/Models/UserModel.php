@@ -28,6 +28,7 @@ class UserModel extends Authenticatable
         'password',
         'avatar_path',
         'tenant_id',
+        'version',
     ];
 
     protected $hidden = ['password', 'remember_token'];

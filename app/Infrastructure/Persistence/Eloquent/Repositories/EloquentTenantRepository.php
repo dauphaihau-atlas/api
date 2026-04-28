@@ -6,7 +6,9 @@ namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
 use App\Core\Application\Contracts\TenantRepositoryInterface;
 use App\Core\Domain\Entities\Tenant;
+use App\Exceptions\ConflictException;
 use App\Infrastructure\Persistence\Eloquent\Models\TenantModel;
+use Illuminate\Support\Facades\DB;
 
 class EloquentTenantRepository implements TenantRepositoryInterface
 {
@@ -28,17 +30,34 @@ class EloquentTenantRepository implements TenantRepositoryInterface
     {
         if ($tenant->getId() === null) {
             $model = new TenantModel;
-        } else {
-            $model = TenantModel::findOrFail($tenant->getId());
+            $model->name = $tenant->getName();
+            $model->slug = $tenant->getSlug();
+            $model->settings = $tenant->getSettings();
+            $model->is_active = $tenant->isActive();
+            $model->save();
+
+            return $this->toEntity($model);
         }
 
-        $model->name = $tenant->getName();
-        $model->slug = $tenant->getSlug();
-        $model->settings = $tenant->getSettings();
-        $model->is_active = $tenant->isActive();
-        $model->save();
+        $affected = TenantModel::where('id', $tenant->getId())
+            ->where('version', $tenant->getVersion())
+            ->update([
+                'name' => $tenant->getName(),
+                'slug' => $tenant->getSlug(),
+                'settings' => $tenant->getSettings() !== null ? json_encode($tenant->getSettings()) : null,
+                'is_active' => $tenant->isActive(),
+                'version' => DB::raw('version + 1'),
+                'updated_at' => now(),
+            ]);
 
-        return $this->toEntity($model);
+        if ($affected === 0) {
+            throw new ConflictException(
+                'Tenant has been modified by another request. Please refresh and retry.',
+                'VERSION_CONFLICT',
+            );
+        }
+
+        return $this->toEntity(TenantModel::findOrFail($tenant->getId()));
     }
 
     public function delete(int $id): bool
@@ -99,6 +118,7 @@ class EloquentTenantRepository implements TenantRepositoryInterface
             isActive: $model->is_active,
             createdAt: $model->created_at?->toDateTimeImmutable(),
             updatedAt: $model->updated_at?->toDateTimeImmutable(),
+            version: $model->version ?? 1,
         );
     }
 }
