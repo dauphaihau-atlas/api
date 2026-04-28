@@ -3,194 +3,51 @@
 namespace App\Core\Application\UseCases\User\ImportUsers;
 
 use App\Core\Application\Contracts\UserImportRepositoryInterface;
+use App\Core\Application\Services\UserImportProcessorResolver;
 use App\Core\Domain\Entities\UserImport;
 use App\Core\Domain\Enums\ImportStatus;
-use App\Events\ImportCompleted;
+use App\Exceptions\ValidationException;
+use App\Infrastructure\Import\ImportPreparationException;
 use App\Infrastructure\Tenant\TenantContext;
-use App\Jobs\ProcessImportChunk;
-use Illuminate\Bus\Batch;
-use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Throwable;
 
 class ImportUsersUseCase
 {
-    private const REQUIRED_HEADERS = ['name', 'email', 'password'];
-
-    private const CHUNK_SIZE = 500;
-
     public function __construct(
         private readonly UserImportRepositoryInterface $importRepository,
+        private readonly UserImportProcessorResolver $processors,
         private readonly TenantContext $tenantContext,
     ) {}
 
     public function execute(ImportUsersRequest $request): ImportUsersResponse
     {
-        $disk = Storage::disk(config('filesystems.imports_disk', 'local'));
-
-        // --- Pass 1: validate headers and count rows (O(1) memory) ---
-        // Use $disk->readStream() which works for both local and S3/MinIO disks.
-        $stream = $disk->readStream($request->path);
-        if ($stream === null) {
-            return new ImportUsersResponse(null, ImportStatus::Failed->value, 'Failed to open import file.');
+        $processor = $request->processor;
+        if (! in_array($processor, ['laravel', 'go'], true)) {
+            throw new ValidationException('Invalid import processor. Supported processors: laravel, go.');
         }
 
-        $headerRow = fgetcsv($stream);
-        if ($headerRow === false) {
-            fclose($stream);
-
-            return new ImportUsersResponse(null, ImportStatus::Failed->value, 'Empty CSV file.');
-        }
-
-        $headerMap = $this->normalizeAndValidateHeaders($headerRow);
-        if ($headerMap === null) {
-            fclose($stream);
-
-            return new ImportUsersResponse(null, ImportStatus::Failed->value, 'Invalid or missing CSV headers. Required: name, email, password.');
-        }
-
-        $totalRows = 0;
-        while (($row = fgetcsv($stream)) !== false) {
-            if (! $this->isEmptyRow($row)) {
-                $totalRows++;
-            }
-        }
-        fclose($stream);
-
-        if ($totalRows === 0) {
-            return new ImportUsersResponse(null, ImportStatus::Failed->value, 'CSV file contains no data rows.');
-        }
-
-        // Create import tracking record
         $import = new UserImport(
             id: null,
             batchId: Str::uuid()->toString(),
             filePath: $request->path,
             status: ImportStatus::Pending,
-            totalRows: $totalRows,
+            totalRows: 0,
             tenantId: $this->tenantContext->getTenantId(),
+            processor: $processor,
         );
+
         $import = $this->importRepository->save($import);
-        $importId = $import->getId();
 
-        // Dispatch an empty batch with callbacks
-        $batch = Bus::batch([])
-            ->name("User Import #{$importId}")
-            ->then(function (Batch $batch) use ($importId): void {
-                $repo = app(UserImportRepositoryInterface::class);
-                $repo->updateStatus($importId, ImportStatus::Completed);
+        try {
+            $this->processors->resolve($processor)->start($import);
+        } catch (ImportPreparationException $exception) {
+            $this->importRepository->updateStatus($import->getId(), ImportStatus::Failed);
 
-                $import = $repo->findById($importId);
-                if ($import !== null) {
-                    ImportCompleted::dispatch($import);
-                }
-            })
-            ->catch(function (Batch $batch, Throwable $e) use ($importId): void {
-                Log::error('Import batch failed', [
-                    'import_id' => $importId,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $repo = app(UserImportRepositoryInterface::class);
-                $repo->updateStatus($importId, ImportStatus::Failed);
-
-                $import = $repo->findById($importId);
-                if ($import !== null) {
-                    ImportCompleted::dispatch($import);
-                }
-            })
-            ->dispatch();
-
-        // --- Pass 2: stream file again, build and add jobs to batch in chunks (O(CHUNK_SIZE) memory) ---
-        $stream = $disk->readStream($request->path);
-        fgetcsv($stream); // skip header
-
-        $currentChunk = [];
-        $rowIndex = 2;
-        $chunkStartRow = 2;
-
-        while (($row = fgetcsv($stream)) !== false) {
-            if ($this->isEmptyRow($row)) {
-                $rowIndex++;
-
-                continue;
-            }
-
-            $currentChunk[] = [
-                'name' => (string) ($row[$headerMap['name']] ?? ''),
-                'email' => (string) ($row[$headerMap['email']] ?? ''),
-                'password' => (string) ($row[$headerMap['password']] ?? ''),
-            ];
-
-            if (count($currentChunk) >= self::CHUNK_SIZE) {
-                $batch->add([new ProcessImportChunk(
-                    importId: $importId,
-                    rows: $currentChunk,
-                    startRowIndex: $chunkStartRow,
-                    tenantId: $this->tenantContext->getTenantId(),
-                )]);
-                $currentChunk = [];
-                $chunkStartRow = $rowIndex + 1;
-            }
-
-            $rowIndex++;
+            return new ImportUsersResponse(null, ImportStatus::Failed->value, $exception->getMessage());
         }
 
-        // Remaining rows
-        if ($currentChunk !== []) {
-            $batch->add([new ProcessImportChunk(
-                importId: $importId,
-                rows: $currentChunk,
-                startRowIndex: $chunkStartRow
-            )]);
-        }
+        $this->importRepository->updateStatus($import->getId(), ImportStatus::Processing);
 
-        fclose($stream);
-
-        $this->importRepository->updateStatus($importId, ImportStatus::Processing);
-
-        return new ImportUsersResponse($importId, ImportStatus::Processing->value);
-    }
-
-    /**
-     * @param  array<int, string>  $headerRow
-     * @return array{name: int, email: int, password: int}|null
-     */
-    private function normalizeAndValidateHeaders(array $headerRow): ?array
-    {
-        $map = [];
-        foreach ($headerRow as $index => $cell) {
-            $key = strtolower(trim((string) $cell));
-            if ($key !== '') {
-                $map[$key] = $index;
-            }
-        }
-        foreach (self::REQUIRED_HEADERS as $required) {
-            if (! isset($map[$required])) {
-                return null;
-            }
-        }
-
-        return [
-            'name' => $map['name'],
-            'email' => $map['email'],
-            'password' => $map['password'],
-        ];
-    }
-
-    /**
-     * @param  array<int, mixed>  $row
-     */
-    private function isEmptyRow(array $row): bool
-    {
-        foreach ($row as $cell) {
-            if (trim((string) $cell) !== '') {
-                return false;
-            }
-        }
-
-        return true;
+        return new ImportUsersResponse($import->getId(), ImportStatus::Processing->value);
     }
 }

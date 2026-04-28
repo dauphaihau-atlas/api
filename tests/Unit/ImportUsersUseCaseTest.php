@@ -4,8 +4,6 @@ namespace Tests\Unit;
 
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersRequest;
 use App\Core\Application\UseCases\User\ImportUsers\ImportUsersUseCase;
-use App\Infrastructure\Persistence\Eloquent\Repositories\EloquentUserImportRepository;
-use App\Infrastructure\Tenant\TenantContext;
 use App\Jobs\ProcessImportChunk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -23,17 +21,14 @@ class ImportUsersUseCaseTest extends TestCase
         parent::setUp();
         Storage::fake(config('filesystems.imports_disk', 'local'));
         Queue::fake();
-        $this->useCase = new ImportUsersUseCase(
-            new EloquentUserImportRepository(new TenantContext),
-            new TenantContext,
-        );
+        $this->useCase = $this->app->make(ImportUsersUseCase::class);
     }
 
     public function test_execute_returns_failed_for_empty_file(): void
     {
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/empty.csv', '');
 
-        $response = $this->useCase->execute(new ImportUsersRequest('imports/empty.csv'));
+        $response = $this->useCase->execute(new ImportUsersRequest('imports/empty.csv', 'laravel'));
 
         $this->assertSame('failed', $response->status);
         $this->assertNull($response->importId);
@@ -44,7 +39,7 @@ class ImportUsersUseCaseTest extends TestCase
         $csv = "name,email,password\n";
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/headers_only.csv', $csv);
 
-        $response = $this->useCase->execute(new ImportUsersRequest('imports/headers_only.csv'));
+        $response = $this->useCase->execute(new ImportUsersRequest('imports/headers_only.csv', 'laravel'));
 
         $this->assertSame('failed', $response->status);
         $this->assertNull($response->importId);
@@ -56,7 +51,7 @@ class ImportUsersUseCaseTest extends TestCase
         $csv = "name,email,password\nAlice,alice@test.com,password123\nBob,bob@test.com,secret456";
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/valid.csv', $csv);
 
-        $response = $this->useCase->execute(new ImportUsersRequest('imports/valid.csv'));
+        $response = $this->useCase->execute(new ImportUsersRequest('imports/valid.csv', 'laravel'));
 
         $this->assertSame('processing', $response->status);
         $this->assertNotNull($response->importId);
@@ -72,7 +67,7 @@ class ImportUsersUseCaseTest extends TestCase
         $csv = "name,email,password\nAlice,alice@test.com,password123";
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/record.csv', $csv);
 
-        $response = $this->useCase->execute(new ImportUsersRequest('imports/record.csv'));
+        $response = $this->useCase->execute(new ImportUsersRequest('imports/record.csv', 'laravel'));
 
         $this->assertDatabaseHas('user_imports', [
             'id' => $response->importId,
@@ -89,7 +84,7 @@ class ImportUsersUseCaseTest extends TestCase
         }
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/large.csv', $csv);
 
-        $response = $this->useCase->execute(new ImportUsersRequest('imports/large.csv'));
+        $response = $this->useCase->execute(new ImportUsersRequest('imports/large.csv', 'laravel'));
 
         $this->assertSame('processing', $response->status);
 
@@ -107,7 +102,7 @@ class ImportUsersUseCaseTest extends TestCase
         $csv = "foo,bar\nAlice,alice@test.com";
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/bad_headers.csv', $csv);
 
-        $response = $this->useCase->execute(new ImportUsersRequest('imports/bad_headers.csv'));
+        $response = $this->useCase->execute(new ImportUsersRequest('imports/bad_headers.csv', 'laravel'));
 
         $this->assertSame('failed', $response->status);
         $this->assertNull($response->importId);

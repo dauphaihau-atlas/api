@@ -18,6 +18,7 @@ class UserImport
         private int $updatedCount = 0,
         private array $errors = [],
         private ?int $tenantId = null,
+        private string $processor = 'go',
         private ?DateTimeImmutable $startedAt = null,
         private ?DateTimeImmutable $completedAt = null,
         private ?DateTimeImmutable $createdAt = null,
@@ -78,6 +79,11 @@ class UserImport
     public function getTenantId(): ?int
     {
         return $this->tenantId;
+    }
+
+    public function getProcessor(): string
+    {
+        return $this->processor;
     }
 
     public function getStartedAt(): ?DateTimeImmutable

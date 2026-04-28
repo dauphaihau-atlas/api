@@ -80,3 +80,7 @@ Route::prefix('v1')->middleware(['throttle.api', 'deprecated.api'])->group(funct
 Route::prefix('v2')->middleware('throttle.api')->group(function (): void {
     require base_path('routes/api/v2.php');
 });
+
+Route::prefix('internal')->group(function (): void {
+    require base_path('routes/api/internal.php');
+});

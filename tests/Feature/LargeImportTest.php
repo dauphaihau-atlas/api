@@ -50,7 +50,7 @@ class LargeImportTest extends TestCase
 
         $memBefore = memory_get_usage(true);
         $start = microtime(true);
-        $response = $useCase->execute(new ImportUsersRequest('imports/1m-users.csv'));
+        $response = $useCase->execute(new ImportUsersRequest('imports/1m-users.csv', 'laravel'));
         $elapsed = round(microtime(true) - $start, 2);
         $memPeak = memory_get_peak_usage(true);
         $memUsedMb = round(($memPeak - $memBefore) / 1024 / 1024, 1);

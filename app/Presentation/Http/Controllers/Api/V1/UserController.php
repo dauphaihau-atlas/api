@@ -178,7 +178,12 @@ class UserController extends Controller
             throw new ServiceUnavailableException('Failed to store import file', 'IMPORT_STORE_FAILED');
         }
 
-        $response = $this->importUsersUseCase->execute(new ImportUsersUseCaseRequest($path));
+        $processor = (string) $request->query('processor', 'go');
+        if (! in_array($processor, ['laravel', 'go'], true)) {
+            throw new ValidationException('Invalid import processor. Supported processors: laravel, go.');
+        }
+
+        $response = $this->importUsersUseCase->execute(new ImportUsersUseCaseRequest($path, $processor));
 
         if ($response->status === 'failed') {
             throw new ValidationException($response->message ?? 'Import failed.');
@@ -187,6 +192,7 @@ class UserController extends Controller
         return ApiResponse::accepted([
             'id' => $response->importId,
             'status' => $response->status,
+            'processor' => $processor,
         ], 'Import started successfully.');
     }
 

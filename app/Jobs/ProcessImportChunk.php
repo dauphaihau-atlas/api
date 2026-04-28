@@ -2,20 +2,13 @@
 
 namespace App\Jobs;
 
-use App\Core\Application\Contracts\UserImportRepositoryInterface;
-use App\Core\Application\Contracts\UserRepositoryInterface;
-use App\Events\ImportChunkProcessed;
+use App\Core\Application\Services\UserImportChunkProcessor;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 
 class ProcessImportChunk implements ShouldQueue
 {
@@ -24,8 +17,6 @@ class ProcessImportChunk implements ShouldQueue
     public int $timeout = 300;
 
     public int $tries = 3;
-
-    private const MIN_PASSWORD_LENGTH = 8;
 
     /**
      * @param  array<int, array{name: string, email: string, password: string}>  $rows
@@ -38,105 +29,17 @@ class ProcessImportChunk implements ShouldQueue
         public readonly ?int $tenantId = null,
     ) {}
 
-    public function handle(
-        UserRepositoryInterface $userRepository,
-        UserImportRepositoryInterface $importRepository
-    ): void {
+    public function handle(UserImportChunkProcessor $processor): void
+    {
         if ($this->batch()?->cancelled()) {
             return;
         }
 
-        $errors = [];
-        $validRows = [];
-        $now = now()->toDateTimeString();
-
-        foreach ($this->rows as $index => $row) {
-            $rowNumber = $this->startRowIndex + $index;
-            $name = trim($row['name'] ?? '');
-            $email = trim($row['email'] ?? '');
-            $password = trim($row['password'] ?? '');
-
-            $rowError = $this->validateRow($name, $email, $password, $rowNumber);
-            if ($rowError !== null) {
-                $errors[] = $rowError;
-
-                continue;
-            }
-
-            $validRows[] = [
-                'name' => $name,
-                'email' => $email,
-                'password' => Hash::make($password),
-                'tenant_id' => $this->tenantId,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
-        }
-
-        $created = 0;
-        $updated = 0;
-
-        if ($validRows !== []) {
-            DB::transaction(function () use ($validRows, $userRepository, &$created, &$updated): void {
-                $result = $userRepository->upsertBatch($validRows);
-                $created = $result['created'];
-                $updated = $result['updated'];
-            });
-            Cache::tags(['users'])->flush();
-            Cache::increment('version:users');
-        }
-
-        $importRepository->addChunkResult(
+        $processor->process(
             $this->importId,
-            count($this->rows),
-            $created,
-            $updated,
-            $errors
+            $this->rows,
+            $this->startRowIndex,
+            $this->tenantId,
         );
-
-        $freshImport = $importRepository->findById($this->importId);
-        if ($freshImport !== null) {
-            try {
-                ImportChunkProcessed::dispatch($freshImport);
-            } catch (Throwable $exception) {
-                Log::warning('Import progress broadcast failed', [
-                    'import_id' => $this->importId,
-                    'exception' => $exception::class,
-                    'message' => $exception->getMessage(),
-                ]);
-            }
-        }
-
-        Log::info('Import chunk processed', [
-            'import_id' => $this->importId,
-            'rows' => count($this->rows),
-            'created' => $created,
-            'updated' => $updated,
-            'errors' => count($errors),
-        ]);
-    }
-
-    /**
-     * @return array{row: int, message: string}|null
-     */
-    private function validateRow(string $name, string $email, string $password, int $rowNumber): ?array
-    {
-        if ($name === '') {
-            return ['row' => $rowNumber, 'message' => 'Name is required.'];
-        }
-        if ($email === '') {
-            return ['row' => $rowNumber, 'message' => 'Email is required.'];
-        }
-        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return ['row' => $rowNumber, 'message' => 'Invalid email.'];
-        }
-        if ($password === '') {
-            return ['row' => $rowNumber, 'message' => 'Password is required.'];
-        }
-        if (strlen($password) < self::MIN_PASSWORD_LENGTH) {
-            return ['row' => $rowNumber, 'message' => 'Password must be at least '.self::MIN_PASSWORD_LENGTH.' characters.'];
-        }
-
-        return null;
     }
 }

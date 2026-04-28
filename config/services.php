@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'go_worker' => [
+        'url' => env('GO_WORKER_URL', 'http://localhost:8081'),
+        'internal_token' => env('GO_WORKER_INTERNAL_TOKEN'),
+    ],
+
 ];

@@ -26,6 +26,7 @@ class EloquentUserImportRepository implements UserImportRepositoryInterface
 
         $model->batch_id = $import->getBatchId();
         $model->file_path = $import->getFilePath();
+        $model->processor = $import->getProcessor();
         $model->status = $import->getStatus()->value;
         $model->total_rows = $import->getTotalRows();
         $model->processed_rows = $import->getProcessedRows();
@@ -65,6 +66,13 @@ class EloquentUserImportRepository implements UserImportRepositoryInterface
         }
     }
 
+    public function updateTotalRows(int $id, int $totalRows): void
+    {
+        UserImportModel::where('id', $id)->update([
+            'total_rows' => $totalRows,
+        ]);
+    }
+
     public function updateStatus(int $id, ImportStatus $status): void
     {
         $data = ['status' => $status->value];
@@ -93,6 +101,7 @@ class EloquentUserImportRepository implements UserImportRepositoryInterface
             updatedCount: $model->updated_count,
             errors: $model->errors ?? [],
             tenantId: $model->tenant_id,
+            processor: $model->processor ?? 'laravel',
             startedAt: $model->started_at?->toDateTimeImmutable(),
             completedAt: $model->completed_at?->toDateTimeImmutable(),
             createdAt: $model->created_at?->toDateTimeImmutable(),

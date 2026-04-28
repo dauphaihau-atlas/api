@@ -14,6 +14,7 @@ class UserImportModel extends Model
         'tenant_id',
         'batch_id',
         'file_path',
+        'processor',
         'status',
         'total_rows',
         'processed_rows',
@@ -33,6 +34,7 @@ class UserImportModel extends Model
     {
         return [
             'status' => ImportStatus::class,
+            'processor' => 'string',
             'errors' => 'array',
             'total_rows' => 'integer',
             'processed_rows' => 'integer',
