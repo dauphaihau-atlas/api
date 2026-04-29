@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Infrastructure\Persistence\Eloquent\Models\TenantModel;
+use App\Infrastructure\Persistence\Eloquent\Models\RoleModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -27,7 +28,6 @@ class DatabaseSeederTest extends TestCase
             ->all();
 
         $this->assertSame([
-            'admin@example.com' => '2024-03-01 09:00:00',
             'export-autumn@example.com' => '2024-10-05 08:15:00',
             'export-boundary-end@example.com' => '2024-12-31 23:59:59',
             'export-boundary-start@example.com' => '2024-01-01 00:00:00',
@@ -36,6 +36,7 @@ class DatabaseSeederTest extends TestCase
             'export-spring@example.com' => '2024-04-10 14:00:00',
             'export-summer@example.com' => '2024-08-20 16:45:00',
             'export-winter@example.com' => '2024-02-15 09:30:00',
+            'maya.chen@arc.test' => '2024-03-01 09:00:00',
         ], $seededUsers);
     }
 
@@ -52,5 +53,19 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(10, UserModel::query()->count());
         $this->assertSame(9, UserModel::query()->where('tenant_id', $defaultTenant->id)->count());
         $this->assertSame(1, UserModel::query()->where('email', 'superadmin@example.com')->count());
+    }
+
+    public function test_database_seeder_has_expected_user_roles(): void
+    {
+        $this->seed();
+
+        $this->assertSame([
+            'admin',
+            'super_admin',
+            'support',
+            'tenant_owner',
+            'user',
+            'viewer',
+        ], RoleModel::query()->orderBy('slug')->pluck('slug')->all());
     }
 }

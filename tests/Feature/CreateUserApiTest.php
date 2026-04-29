@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Events\UserCreated;
+use App\Infrastructure\Persistence\Eloquent\Models\TenantModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Notifications\UserCreatedNotification;
 use App\Notifications\UserInviteNotification;
@@ -52,16 +53,16 @@ class CreateUserApiTest extends TestCase
         $response = $this->postJson('/api/v1/users', [
             'name' => 'Invited Admin',
             'email' => 'invited@example.com',
-            'role' => 'admin',
+            'role' => 'support',
             'send_invite' => true,
         ], $this->tenantHeaders($tenant, $token));
 
         $response->assertStatus(201);
-        $response->assertJsonPath('data.roles.0', 'admin');
+        $response->assertJsonPath('data.roles.0', 'support');
         $response->assertJsonPath('data.invitation_status', 'sent');
 
         $created = UserModel::where('email', 'invited@example.com')->firstOrFail();
-        $this->assertTrue($created->roles()->where('slug', 'admin')->exists());
+        $this->assertTrue($created->roles()->where('slug', 'support')->exists());
         $this->assertDatabaseHas('password_reset_tokens', ['email' => 'invited@example.com']);
         Notification::assertSentTo($created, UserInviteNotification::class);
         Event::assertNotDispatched(UserCreated::class);
@@ -150,6 +151,38 @@ class CreateUserApiTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['role']);
+    }
+
+    public function test_admin_cannot_assign_elevated_role(): void
+    {
+        ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
+
+        $response = $this->postJson('/api/v1/users', [
+            'name' => 'Owner Candidate',
+            'email' => 'owner-candidate@example.com',
+            'role' => 'tenant_owner',
+            'send_invite' => true,
+        ], $this->tenantHeaders($tenant, $token));
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['role']);
+    }
+
+    public function test_tenant_owner_can_assign_elevated_role(): void
+    {
+        $tenant = TenantModel::factory()->create();
+        $owner = UserModel::factory()->tenantOwner()->forTenant($tenant)->create();
+        $token = $owner->createToken('test')->plainTextToken;
+
+        $response = $this->postJson('/api/v1/users', [
+            'name' => 'Admin Candidate',
+            'email' => 'admin-candidate@example.com',
+            'role' => 'admin',
+            'send_invite' => true,
+        ], $this->tenantHeaders($tenant, $token));
+
+        $response->assertStatus(201);
+        $response->assertJsonPath('data.roles.0', 'admin');
     }
 
     public function test_validation_fails_with_short_password(): void

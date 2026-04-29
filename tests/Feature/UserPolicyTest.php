@@ -35,6 +35,13 @@ class UserPolicyTest extends TestCase
         $this->assertFalse($this->policy->viewAny($user));
     }
 
+    public function test_view_any_allowed_for_viewer(): void
+    {
+        $viewer = UserModel::factory()->viewer()->create();
+
+        $this->assertTrue($this->policy->viewAny($viewer));
+    }
+
     // ── view ──
 
     public function test_view_allowed_for_admin(): void
@@ -76,6 +83,20 @@ class UserPolicyTest extends TestCase
         $this->assertFalse($this->policy->create($user));
     }
 
+    public function test_create_allowed_for_support(): void
+    {
+        $support = UserModel::factory()->support()->create();
+
+        $this->assertTrue($this->policy->create($support));
+    }
+
+    public function test_create_denied_for_viewer(): void
+    {
+        $viewer = UserModel::factory()->viewer()->create();
+
+        $this->assertFalse($this->policy->create($viewer));
+    }
+
     // ── update ──
 
     public function test_update_allowed_for_admin(): void
@@ -115,6 +136,20 @@ class UserPolicyTest extends TestCase
         $user = UserModel::factory()->create();
 
         $this->assertFalse($this->policy->delete($user));
+    }
+
+    public function test_delete_allowed_for_tenant_owner(): void
+    {
+        $owner = UserModel::factory()->tenantOwner()->create();
+
+        $this->assertTrue($this->policy->delete($owner));
+    }
+
+    public function test_delete_denied_for_support(): void
+    {
+        $support = UserModel::factory()->support()->create();
+
+        $this->assertFalse($this->policy->delete($support));
     }
 
     // ── import ──
