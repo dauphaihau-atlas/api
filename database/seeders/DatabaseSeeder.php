@@ -19,15 +19,15 @@ class DatabaseSeeder extends Seeder
         $tenant = TenantModel::query()->updateOrCreate([
             'slug' => 'default',
         ], [
-            'name' => 'Default Tenant',
+            'name' => 'Arc',
             'settings' => null,
             'is_active' => true,
         ]);
 
         $adminUser = UserModel::query()->updateOrCreate([
-            'email' => 'admin@example.com',
+            'email' => 'maya.chen@arc.test',
         ], [
-            'name' => 'Admin User',
+            'name' => 'Maya Chen',
             'tenant_id' => $tenant->id,
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
@@ -35,7 +35,7 @@ class DatabaseSeeder extends Seeder
             'created_at' => '2024-03-01 09:00:00',
             'updated_at' => '2024-03-01 09:00:00',
         ]);
-        $this->syncRole($adminUser, 'admin');
+        $this->syncRole($adminUser, 'tenant_owner');
 
         $this->call(UserExportDemoSeeder::class);
 

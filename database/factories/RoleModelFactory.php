@@ -30,6 +30,33 @@ class RoleModelFactory extends Factory
         ]);
     }
 
+    public function tenantOwner(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'name' => 'Tenant Owner',
+            'slug' => 'tenant_owner',
+            'description' => 'Owner-level tenant administration access',
+        ]);
+    }
+
+    public function support(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'name' => 'Support',
+            'slug' => 'support',
+            'description' => 'Support access for user assistance and audit review',
+        ]);
+    }
+
+    public function viewer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'name' => 'Viewer',
+            'slug' => 'viewer',
+            'description' => 'Read-only access',
+        ]);
+    }
+
     public function user(): static
     {
         return $this->state(fn (array $attributes) => [

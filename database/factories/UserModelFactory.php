@@ -38,6 +38,30 @@ class UserModelFactory extends Factory
         });
     }
 
+    public function tenantOwner(): static
+    {
+        return $this->afterCreating(function (UserModel $user) {
+            $role = RoleModel::where('slug', 'tenant_owner')->firstOrFail();
+            $user->roles()->attach($role);
+        });
+    }
+
+    public function support(): static
+    {
+        return $this->afterCreating(function (UserModel $user) {
+            $role = RoleModel::where('slug', 'support')->firstOrFail();
+            $user->roles()->attach($role);
+        });
+    }
+
+    public function viewer(): static
+    {
+        return $this->afterCreating(function (UserModel $user) {
+            $role = RoleModel::where('slug', 'viewer')->firstOrFail();
+            $user->roles()->attach($role);
+        });
+    }
+
     public function user(): static
     {
         return $this->afterCreating(function (UserModel $user) {
