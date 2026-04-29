@@ -19,7 +19,7 @@ class ProcessImportChunk implements ShouldQueue
     public int $tries = 3;
 
     /**
-     * @param  array<int, array{name: string, email: string, password: string}>  $rows
+     * @param  array<int, array{name: string, email: string, role: string}>  $rows
      * @param  int  $startRowIndex  Row number of the first row in this chunk (for error reporting)
      */
     public function __construct(

@@ -36,7 +36,7 @@ class ImportUsersUseCaseTest extends TestCase
 
     public function test_execute_returns_failed_when_only_headers(): void
     {
-        $csv = "name,email,password\n";
+        $csv = "name,email,role\n";
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/headers_only.csv', $csv);
 
         $response = $this->useCase->execute(new ImportUsersRequest('imports/headers_only.csv', 'laravel'));
@@ -48,7 +48,7 @@ class ImportUsersUseCaseTest extends TestCase
 
     public function test_execute_dispatches_jobs_for_valid_csv(): void
     {
-        $csv = "name,email,password\nAlice,alice@test.com,password123\nBob,bob@test.com,secret456";
+        $csv = "name,email,role\nAlice,alice@test.com,user\nBob,bob@test.com,admin";
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/valid.csv', $csv);
 
         $response = $this->useCase->execute(new ImportUsersRequest('imports/valid.csv', 'laravel'));
@@ -64,7 +64,7 @@ class ImportUsersUseCaseTest extends TestCase
 
     public function test_execute_creates_import_record(): void
     {
-        $csv = "name,email,password\nAlice,alice@test.com,password123";
+        $csv = "name,email,role\nAlice,alice@test.com,user";
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/record.csv', $csv);
 
         $response = $this->useCase->execute(new ImportUsersRequest('imports/record.csv', 'laravel'));
@@ -78,9 +78,9 @@ class ImportUsersUseCaseTest extends TestCase
 
     public function test_execute_creates_multiple_chunks_for_large_csv(): void
     {
-        $csv = "name,email,password\n";
+        $csv = "name,email,role\n";
         for ($i = 1; $i <= 1200; $i++) {
-            $csv .= "User{$i},user{$i}@test.com,password123\n";
+            $csv .= "User{$i},user{$i}@test.com,user\n";
         }
         Storage::disk(config('filesystems.imports_disk', 'local'))->put('imports/large.csv', $csv);
 

@@ -24,7 +24,7 @@ class UserImportApiTest extends TestCase
 
     public function test_users_import_returns_401_when_unauthenticated(): void
     {
-        $csv = "name,email,password\nAlice,alice@example.com,password123";
+        $csv = "name,email,role\nAlice,alice@example.com,user";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
 
         $response = $this->postJson('/api/v1/users/import', [
@@ -37,7 +37,7 @@ class UserImportApiTest extends TestCase
     public function test_users_import_returns_403_when_authenticated_as_non_admin(): void
     {
         ['tenant' => $tenant, 'user' => $user, 'token' => $token] = $this->createTenantWithUser();
-        $csv = "name,email,password\nAlice,alice@example.com,password123";
+        $csv = "name,email,role\nAlice,alice@example.com,user";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
 
         $response = $this->post('/api/v1/users/import', [
@@ -71,7 +71,7 @@ class UserImportApiTest extends TestCase
     public function test_users_import_with_laravel_processor_returns_202_and_dispatches_jobs(): void
     {
         ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
-        $csv = "name,email,password\nAlice One,alice@example.com,password123\nBob Two,bob@example.com,secret456";
+        $csv = "name,email,role\nAlice One,alice@example.com,user\nBob Two,bob@example.com,admin";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
@@ -99,11 +99,12 @@ class UserImportApiTest extends TestCase
     public function test_users_import_defaults_to_go_processor(): void
     {
         ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
+        config(['services.go_worker.url' => 'http://localhost:8081']);
         Http::fake([
             'http://localhost:8081/user-imports' => Http::response(['status' => 'accepted'], 202),
         ]);
 
-        $csv = "name,email,password\nAlice One,alice@example.com,password123";
+        $csv = "name,email,role\nAlice One,alice@example.com,user";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
@@ -128,7 +129,7 @@ class UserImportApiTest extends TestCase
     public function test_users_import_returns_422_for_invalid_processor(): void
     {
         ['tenant' => $tenant, 'admin' => $admin, 'token' => $token] = $this->createTenantWithAdmin();
-        $csv = "name,email,password\nAlice One,alice@example.com,password123";
+        $csv = "name,email,role\nAlice One,alice@example.com,user";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 

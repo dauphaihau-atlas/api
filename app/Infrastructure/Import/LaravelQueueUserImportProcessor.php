@@ -16,7 +16,7 @@ use Throwable;
 
 class LaravelQueueUserImportProcessor implements UserImportProcessorInterface
 {
-    private const REQUIRED_HEADERS = ['name', 'email', 'password'];
+    private const REQUIRED_HEADERS = ['name', 'email', 'role'];
 
     private const CHUNK_SIZE = 500;
 
@@ -41,7 +41,7 @@ class LaravelQueueUserImportProcessor implements UserImportProcessorInterface
         $headerMap = $this->normalizeAndValidateHeaders($headerRow);
         if ($headerMap === null) {
             fclose($stream);
-            throw new ImportPreparationException('Invalid or missing CSV headers. Required: name, email, password.');
+            throw new ImportPreparationException('Invalid or missing CSV headers. Required: name, email, role.');
         }
 
         $totalRows = 0;
@@ -102,7 +102,7 @@ class LaravelQueueUserImportProcessor implements UserImportProcessorInterface
             $currentChunk[] = [
                 'name' => (string) ($row[$headerMap['name']] ?? ''),
                 'email' => (string) ($row[$headerMap['email']] ?? ''),
-                'password' => (string) ($row[$headerMap['password']] ?? ''),
+                'role' => (string) ($row[$headerMap['role']] ?? ''),
             ];
 
             if (count($currentChunk) >= self::CHUNK_SIZE) {
@@ -133,7 +133,7 @@ class LaravelQueueUserImportProcessor implements UserImportProcessorInterface
 
     /**
      * @param  array<int, string>  $headerRow
-     * @return array{name: int, email: int, password: int}|null
+     * @return array{name: int, email: int, role: int}|null
      */
     private function normalizeAndValidateHeaders(array $headerRow): ?array
     {
@@ -153,7 +153,7 @@ class LaravelQueueUserImportProcessor implements UserImportProcessorInterface
         return [
             'name' => $map['name'],
             'email' => $map['email'],
-            'password' => $map['password'],
+            'role' => $map['role'],
         ];
     }
 

@@ -10,9 +10,11 @@ use App\Exceptions\ConflictException;
 use App\Infrastructure\Persistence\Eloquent\Models\RoleModel;
 use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use App\Infrastructure\Tenant\TenantContext;
+use App\Notifications\UserInviteNotification;
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class EloquentUserRepository implements UserRepositoryInterface
 {
@@ -280,23 +282,65 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     public function upsertBatch(array $usersData): array
     {
-        $emails = array_column($usersData, 'email');
-        $existingCount = $this->applyTenantScope(UserModel::query())
-            ->whereIn('email', $emails)
-            ->count();
+        $created = 0;
+        $updated = 0;
 
-        // Use DB::table() to bypass UserModel's 'hashed' password cast,
-        // since passwords are already hashed by the job before calling this method.
-        DB::table('users')->upsert(
-            $usersData,
-            ['email'],
-            ['name', 'password', 'updated_at'],
-        );
+        DB::transaction(function () use ($usersData, &$created, &$updated): void {
+            foreach ($usersData as $row) {
+                $user = $this->applyTenantScope(UserModel::query())
+                    ->where('email', $row['email'])
+                    ->first();
+
+                if ($user === null) {
+                    $user = new UserModel;
+                    $user->forceFill([
+                        'tenant_id' => $row['tenant_id'] ?? $this->tenantContext->getTenantId(),
+                        'name' => $row['name'],
+                        'email' => $row['email'],
+                        'password' => $row['password'],
+                        'email_verified_at' => null,
+                    ])->save();
+                    $created++;
+                } else {
+                    $user->forceFill([
+                        'name' => $row['name'],
+                        'updated_at' => $row['updated_at'],
+                    ])->save();
+                    $updated++;
+                }
+
+                $role = RoleModel::where('slug', $row['role'])->firstOrFail();
+                $user->roles()->sync([$role->id]);
+
+                DB::table('password_reset_tokens')->updateOrInsert(
+                    ['email' => $row['email']],
+                    [
+                        'token' => Hash::make($row['invitation_token']),
+                        'created_at' => $row['created_at'],
+                    ],
+                );
+
+                $user->notify(new UserInviteNotification(
+                    $row['name'],
+                    $this->buildInviteUrl($row['email'], $row['invitation_token']),
+                ));
+            }
+        });
 
         return [
-            'created' => count($usersData) - $existingCount,
-            'updated' => $existingCount,
+            'created' => $created,
+            'updated' => $updated,
         ];
+    }
+
+    private function buildInviteUrl(string $email, string $token): string
+    {
+        $baseUrl = rtrim((string) config('app.dashboard_url'), '/');
+
+        return $baseUrl.'/invitations/accept?'.http_build_query([
+            'email' => $email,
+            'token' => $token,
+        ]);
     }
 
     private function toEntity(UserModel $model): User

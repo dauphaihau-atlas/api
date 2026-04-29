@@ -9,11 +9,12 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class UserImportChunkProcessor
 {
-    private const MIN_PASSWORD_LENGTH = 8;
+    private const ALLOWED_ROLES = ['admin', 'user'];
 
     public function __construct(
         private readonly UserRepositoryInterface $userRepository,
@@ -21,7 +22,7 @@ class UserImportChunkProcessor
     ) {}
 
     /**
-     * @param  array<int, array{name: string, email: string, password: string}>  $rows
+     * @param  array<int, array{name: string, email: string, role: string}>  $rows
      */
     public function process(int $importId, array $rows, int $startRowIndex, ?int $tenantId): void
     {
@@ -33,9 +34,9 @@ class UserImportChunkProcessor
             $rowNumber = $startRowIndex + $index;
             $name = trim($row['name'] ?? '');
             $email = trim($row['email'] ?? '');
-            $password = trim($row['password'] ?? '');
+            $role = strtolower(trim($row['role'] ?? ''));
 
-            $rowError = $this->validateRow($name, $email, $password, $rowNumber);
+            $rowError = $this->validateRow($name, $email, $role, $rowNumber);
             if ($rowError !== null) {
                 $errors[] = $rowError;
 
@@ -45,7 +46,9 @@ class UserImportChunkProcessor
             $validRows[] = [
                 'name' => $name,
                 'email' => $email,
-                'password' => Hash::make($password),
+                'role' => $role,
+                'password' => Hash::make(Str::password(48)),
+                'invitation_token' => Str::random(64),
                 'tenant_id' => $tenantId,
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -98,7 +101,7 @@ class UserImportChunkProcessor
     /**
      * @return array{row: int, message: string}|null
      */
-    private function validateRow(string $name, string $email, string $password, int $rowNumber): ?array
+    private function validateRow(string $name, string $email, string $role, int $rowNumber): ?array
     {
         if ($name === '') {
             return ['row' => $rowNumber, 'message' => 'Name is required.'];
@@ -109,11 +112,11 @@ class UserImportChunkProcessor
         if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return ['row' => $rowNumber, 'message' => 'Invalid email.'];
         }
-        if ($password === '') {
-            return ['row' => $rowNumber, 'message' => 'Password is required.'];
+        if ($role === '') {
+            return ['row' => $rowNumber, 'message' => 'Role is required.'];
         }
-        if (strlen($password) < self::MIN_PASSWORD_LENGTH) {
-            return ['row' => $rowNumber, 'message' => 'Password must be at least '.self::MIN_PASSWORD_LENGTH.' characters.'];
+        if (! in_array($role, self::ALLOWED_ROLES, true)) {
+            return ['row' => $rowNumber, 'message' => 'Invalid role. Supported roles: admin, user.'];
         }
 
         return null;

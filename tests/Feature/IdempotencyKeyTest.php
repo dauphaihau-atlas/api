@@ -29,7 +29,7 @@ class IdempotencyKeyTest extends TestCase
     public function test_import_returns_422_when_idempotency_key_is_missing(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
-        $file = UploadedFile::fake()->createWithContent('users.csv', "name,email,password\nAlice,alice@example.com,password123");
+        $file = UploadedFile::fake()->createWithContent('users.csv', "name,email,role\nAlice,alice@example.com,user");
 
         $response = $this->post('/api/v1/users/import', ['file' => $file], $this->tenantHeaders($tenant, $token));
 
@@ -50,7 +50,7 @@ class IdempotencyKeyTest extends TestCase
     public function test_key_shorter_than_16_chars_is_rejected(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
-        $file = UploadedFile::fake()->createWithContent('users.csv', "name,email,password\nAlice,a@a.com,password123");
+        $file = UploadedFile::fake()->createWithContent('users.csv', "name,email,role\nAlice,a@a.com,user");
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => 'short']);
 
         $response = $this->post('/api/v1/users/import', ['file' => $file], $headers);
@@ -62,7 +62,7 @@ class IdempotencyKeyTest extends TestCase
     public function test_key_with_invalid_characters_is_rejected(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
-        $file = UploadedFile::fake()->createWithContent('users.csv', "name,email,password\nAlice,a@a.com,password123");
+        $file = UploadedFile::fake()->createWithContent('users.csv', "name,email,role\nAlice,a@a.com,user");
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => 'invalid/key/slashes!!!!!']);
 
         $response = $this->post('/api/v1/users/import', ['file' => $file], $headers);
@@ -74,7 +74,7 @@ class IdempotencyKeyTest extends TestCase
     public function test_key_with_whitespace_is_rejected(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
-        $file = UploadedFile::fake()->createWithContent('users.csv', "name,email,password\nAlice,a@a.com,password123");
+        $file = UploadedFile::fake()->createWithContent('users.csv', "name,email,role\nAlice,a@a.com,user");
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => 'key with spaces  here !!']);
 
         $response = $this->post('/api/v1/users/import', ['file' => $file], $headers);
@@ -88,7 +88,7 @@ class IdempotencyKeyTest extends TestCase
     public function test_first_import_request_creates_import_normally(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
-        $csv = "name,email,password\nAlice,alice@example.com,password123";
+        $csv = "name,email,role\nAlice,alice@example.com,user";
         $file = UploadedFile::fake()->createWithContent('users.csv', $csv);
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
@@ -108,7 +108,7 @@ class IdempotencyKeyTest extends TestCase
     public function test_duplicate_import_returns_same_response(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
-        $csv = "name,email,password\nAlice,alice@example.com,password123";
+        $csv = "name,email,role\nAlice,alice@example.com,user";
         $file1 = UploadedFile::fake()->createWithContent('users.csv', $csv);
         $file2 = UploadedFile::fake()->createWithContent('users.csv', $csv);
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
@@ -125,13 +125,13 @@ class IdempotencyKeyTest extends TestCase
     public function test_duplicate_import_does_not_dispatch_duplicate_jobs(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
-        $csv = "name,email,password\nAlice,alice@example.com,password123\nBob,bob@example.com,password456";
+        $csv = "name,email,role\nAlice,alice@example.com,user\nBob,bob@example.com,admin";
         $file1 = UploadedFile::fake()->createWithContent('users.csv', $csv);
         $file2 = UploadedFile::fake()->createWithContent('users.csv', $csv);
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
-        $this->post('/api/v1/users/import', ['file' => $file1], $headers);
-        $this->post('/api/v1/users/import', ['file' => $file2], $headers);
+        $this->post('/api/v1/users/import?processor=laravel', ['file' => $file1], $headers);
+        $this->post('/api/v1/users/import?processor=laravel', ['file' => $file2], $headers);
 
         Queue::assertPushed(ProcessImportChunk::class, 1);
     }
@@ -155,8 +155,8 @@ class IdempotencyKeyTest extends TestCase
     public function test_same_key_different_file_returns_409(): void
     {
         ['tenant' => $tenant, 'token' => $token] = $this->createTenantWithAdmin();
-        $file1 = UploadedFile::fake()->createWithContent('users.csv', "name,email,password\nAlice,alice@example.com,password123");
-        $file2 = UploadedFile::fake()->createWithContent('users.csv', "name,email,password\nBob,bob@example.com,password456");
+        $file1 = UploadedFile::fake()->createWithContent('users.csv', "name,email,role\nAlice,alice@example.com,user");
+        $file2 = UploadedFile::fake()->createWithContent('users.csv', "name,email,role\nBob,bob@example.com,admin");
         $headers = array_merge($this->tenantHeaders($tenant, $token), ['Idempotency-Key' => $this->idempotencyKey()]);
 
         $first = $this->post('/api/v1/users/import', ['file' => $file1], $headers);
@@ -176,8 +176,8 @@ class IdempotencyKeyTest extends TestCase
         $admin2 = UserModel::factory()->admin()->forTenant($tenant)->create();
         $key = $this->idempotencyKey();
 
-        $csv1 = "name,email,password\nAlice,alice@example.com,password123";
-        $csv2 = "name,email,password\nBob,bob@example.com,password456";
+        $csv1 = "name,email,role\nAlice,alice@example.com,user";
+        $csv2 = "name,email,role\nBob,bob@example.com,admin";
         $file1 = UploadedFile::fake()->createWithContent('users.csv', $csv1);
         $file2 = UploadedFile::fake()->createWithContent('users2.csv', $csv2);
 
@@ -206,7 +206,7 @@ class IdempotencyKeyTest extends TestCase
         $admin2 = UserModel::factory()->admin()->forTenant($tenant2)->create();
         $key = $this->idempotencyKey();
 
-        $csv = "name,email,password\nAlice,alice@example.com,password123";
+        $csv = "name,email,role\nAlice,alice@example.com,user";
         $file1 = UploadedFile::fake()->createWithContent('users.csv', $csv);
         $file2 = UploadedFile::fake()->createWithContent('users2.csv', $csv);
 

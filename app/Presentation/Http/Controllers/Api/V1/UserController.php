@@ -274,9 +274,9 @@ class UserController extends Controller
     {
         return response()->streamDownload(function (): void {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['name', 'email', 'password']);
-            fputcsv($output, ['John Doe', 'john@example.com', 'Password123!']);
-            fputcsv($output, ['Jane Smith', 'jane@example.com', 'Password456@']);
+            fputcsv($output, ['name', 'email', 'role']);
+            fputcsv($output, ['John Doe', 'john@example.com', 'user']);
+            fputcsv($output, ['Jane Admin', 'jane@example.com', 'admin']);
             fclose($output);
         }, 'users-import-template.csv', [
             'Content-Type' => 'text/csv',

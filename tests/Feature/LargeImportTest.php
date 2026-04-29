@@ -97,7 +97,7 @@ class LargeImportTest extends TestCase
             if ($row === false) {
                 break;
             }
-            $rows[] = ['name' => $row[0], 'email' => $row[1], 'password' => $row[2]];
+            $rows[] = ['name' => $row[0], 'email' => $row[1], 'role' => 'user'];
         }
         fclose($stream);
 
@@ -114,10 +114,7 @@ class LargeImportTest extends TestCase
         ]);
 
         $job = new ProcessImportChunk($import->id, $rows, 2);
-        $job->handle(
-            app(\App\Core\Application\Contracts\UserRepositoryInterface::class),
-            app(\App\Core\Application\Contracts\UserImportRepositoryInterface::class)
-        );
+        $job->handle(app(\App\Core\Application\Services\UserImportChunkProcessor::class));
 
         $import->refresh();
         echo "\n--- Single Chunk Processing ---\n";

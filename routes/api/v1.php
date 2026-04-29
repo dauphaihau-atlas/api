@@ -1,6 +1,7 @@
 <?php
 
 use App\Presentation\Http\Controllers\Api\V1\AuthController;
+use App\Presentation\Http\Controllers\Api\V1\InvitationController;
 use App\Presentation\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -8,6 +9,8 @@ use Illuminate\Support\Facades\Route;
 Route::post('login', [AuthController::class, 'login'])
     ->middleware(['throttle.api:login', 'resolve.tenant.optional']);
 Route::post('register', [AuthController::class, 'register']);
+Route::get('invitations/accept', [InvitationController::class, 'show']);
+Route::post('invitations/accept', [InvitationController::class, 'accept']);
 
 // Public — signed download URL (no auth required, protected by signature)
 Route::get('users/export/download', [UserController::class, 'downloadExport'])

@@ -49,9 +49,9 @@ interface UserRepositoryInterface
     public function countCreatedToday(): int;
 
     /**
-     * Bulk upsert users (insert new, update existing by email).
+     * Bulk import invited users (insert new, update existing by email).
      *
-     * @param  array<int, array{name: string, email: string, password: string, created_at: string, updated_at: string}>  $usersData
+     * @param  array<int, array{name: string, email: string, role: string, password: string, invitation_token: string, tenant_id: int|null, created_at: string, updated_at: string}>  $usersData
      * @return array{created: int, updated: int}
      */
     public function upsertBatch(array $usersData): array;

@@ -50,6 +50,6 @@ class UserImportTemplateApiTest extends TestCase
         $content = $response->streamedContent();
         $firstLine = strtok($content, "\n");
 
-        $this->assertSame('name,email,password', trim((string) $firstLine));
+        $this->assertSame('name,email,role', trim((string) $firstLine));
     }
 }

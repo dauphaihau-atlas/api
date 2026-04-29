@@ -12,6 +12,7 @@ class GoWorkerUserImportProcessor implements UserImportProcessorInterface
     public function start(UserImport $import): void
     {
         $url = rtrim((string) config('services.go_worker.url'), '/');
+
         if ($url === '') {
             throw new ServiceUnavailableException('Go worker URL is not configured.', 'GO_WORKER_NOT_CONFIGURED');
         }
