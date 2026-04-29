@@ -10,6 +10,9 @@ class CreateUserResponse
         public readonly int $id,
         public readonly string $name,
         public readonly string $email,
-        public readonly DateTimeImmutable $createdAt
+        public readonly DateTimeImmutable $createdAt,
+        /** @var array<int, string> */
+        public readonly array $roles = [],
+        public readonly string $invitationStatus = 'not_sent',
     ) {}
 }

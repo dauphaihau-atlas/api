@@ -50,6 +50,8 @@ class UserResource extends JsonResource
                 'name' => $this->resource->name,
                 'email' => $this->resource->email,
                 'avatar_url' => null,
+                'roles' => $this->resource->roles,
+                'invitation_status' => $this->resource->invitationStatus,
                 'created_at' => $this->resource->createdAt->format('Y-m-d H:i:s'),
             ];
         }

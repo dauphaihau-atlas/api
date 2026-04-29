@@ -14,6 +14,12 @@ interface UserRepositoryInterface
 
     public function save(User $user): User;
 
+    public function assignRole(User $user, string $roleSlug): User;
+
+    public function createInvitation(User $user, string $token): void;
+
+    public function sendInvite(User $user, string $token): void;
+
     public function delete(int $id): bool;
 
     public function restore(int $id): bool;

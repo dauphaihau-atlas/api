@@ -81,6 +81,51 @@ class EloquentUserRepository implements UserRepositoryInterface
         return $this->toEntity($model);
     }
 
+    public function assignRole(User $user, string $roleSlug): User
+    {
+        $id = $user->getId();
+        if ($id === null) {
+            throw new ConflictException('Cannot assign a role before the user is saved');
+        }
+
+        $model = $this->applyTenantScope(UserModel::query())->findOrFail($id);
+        $role = RoleModel::where('slug', $roleSlug)->firstOrFail();
+
+        $model->roles()->sync([$role->id]);
+        $model->load('roles');
+
+        return $this->toEntity($model);
+    }
+
+    public function createInvitation(User $user, string $token): void
+    {
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->getEmail()->getValue()],
+            [
+                'token' => Hash::make($token),
+                'created_at' => now(),
+            ],
+        );
+    }
+
+    public function sendInvite(User $user, string $token): void
+    {
+        $id = $user->getId();
+        if ($id === null) {
+            return;
+        }
+
+        $model = $this->applyTenantScope(UserModel::query())->find($id);
+        if ($model === null) {
+            return;
+        }
+
+        $model->notify(new UserInviteNotification(
+            $user->getName(),
+            $this->buildInviteUrl($user->getEmail()->getValue(), $token),
+        ));
+    }
+
     public function delete(int $id): bool
     {
         $model = $this->applyTenantScope(UserModel::query())->find($id);

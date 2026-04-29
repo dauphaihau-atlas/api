@@ -105,11 +105,12 @@ class AuthController extends Controller
         if ($validated === null || $validated === []) {
             throw new ValidationException('Validation failed');
         }
+        $request->validate(['password' => ['required', 'string', 'min:8']]);
 
         $useCaseRequest = new CreateUserRequest(
             name: $validated['name'],
             email: $validated['email'],
-            password: $validated['password']
+            password: $validated['password'],
         );
         $createResponse = $this->createUserUseCase->execute($useCaseRequest);
 

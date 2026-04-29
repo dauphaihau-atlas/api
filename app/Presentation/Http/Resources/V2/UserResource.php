@@ -62,7 +62,11 @@ class UserResource extends JsonResource
                 'name' => $this->resource->name,
                 'email' => $this->resource->email,
                 'avatar' => ['url' => null],
-                'roles' => [],
+                'roles' => array_map(
+                    fn (string $slug) => ['slug' => $slug, 'name' => str($slug)->replace('_', ' ')->title()->toString()],
+                    $this->resource->roles,
+                ),
+                'invitation_status' => $this->resource->invitationStatus,
                 'created_at' => $this->resource->createdAt->format('c'),
                 'updated_at' => $this->resource->createdAt->format('c'),
             ];

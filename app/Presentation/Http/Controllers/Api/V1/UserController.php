@@ -126,7 +126,9 @@ class UserController extends Controller
         $useCaseRequest = new CreateUserRequest(
             name: $validated['name'],
             email: $validated['email'],
-            password: $validated['password']
+            password: $validated['password'] ?? null,
+            role: $validated['role'] ?? 'user',
+            sendInvite: (bool) ($validated['send_invite'] ?? false),
         );
 
         $response = $this->createUserUseCase->execute($useCaseRequest);

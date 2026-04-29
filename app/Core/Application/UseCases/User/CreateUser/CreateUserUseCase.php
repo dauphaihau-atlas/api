@@ -12,6 +12,7 @@ use App\Exceptions\InternalServerException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class CreateUserUseCase
 {
@@ -27,15 +28,29 @@ class CreateUserUseCase
         }
 
         $email = new Email($request->email);
+        $password = $request->password !== null
+            ? Hash::make($request->password)
+            : Hash::make(Str::random(40));
         $user = new User(
             id: null,
             name: $request->name,
             email: $email,
-            password: Hash::make($request->password)
+            password: $password
         );
 
+        $inviteToken = $request->sendInvite ? Str::random(64) : null;
+
         try {
-            $savedUser = DB::transaction(fn () => $this->userRepository->save($user));
+            $savedUser = DB::transaction(function () use ($user, $request, $inviteToken): User {
+                $savedUser = $this->userRepository->save($user);
+                $savedUser = $this->userRepository->assignRole($savedUser, $request->role);
+
+                if ($inviteToken !== null) {
+                    $this->userRepository->createInvitation($savedUser, $inviteToken);
+                }
+
+                return $savedUser;
+            });
         } catch (QueryException $e) {
             if (str_starts_with((string) $e->getCode(), SqlState::INTEGRITY_CONSTRAINT)) {
                 throw new ConflictException('User with this email already exists');
@@ -48,13 +63,19 @@ class CreateUserUseCase
             throw new InternalServerException('User was saved but ID was not returned');
         }
 
-        UserCreated::dispatch($savedUser);
+        if ($inviteToken !== null) {
+            $this->userRepository->sendInvite($savedUser, $inviteToken);
+        } else {
+            UserCreated::dispatch($savedUser);
+        }
 
         return new CreateUserResponse(
             id: $id,
             name: $savedUser->getName(),
             email: $savedUser->getEmail()->getValue(),
-            createdAt: $savedUser->getCreatedAt()
+            createdAt: $savedUser->getCreatedAt(),
+            roles: array_map(fn ($role) => $role->getSlug(), $savedUser->getRoles()),
+            invitationStatus: $inviteToken !== null ? 'sent' : 'not_sent',
         );
     }
 }

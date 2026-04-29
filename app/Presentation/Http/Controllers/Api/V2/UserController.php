@@ -62,7 +62,9 @@ class UserController extends Controller
         $response = $this->createUserUseCase->execute(new CreateUserRequest(
             name: $validated['name'],
             email: $validated['email'],
-            password: $validated['password'],
+            password: $validated['password'] ?? null,
+            role: $validated['role'] ?? 'user',
+            sendInvite: (bool) ($validated['send_invite'] ?? false),
         ));
 
         return ApiResponse::created(new UserResource($response));

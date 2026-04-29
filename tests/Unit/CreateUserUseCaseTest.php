@@ -7,6 +7,7 @@ namespace Tests\Unit;
 use App\Core\Application\Contracts\UserRepositoryInterface;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserRequest;
 use App\Core\Application\UseCases\User\CreateUser\CreateUserUseCase;
+use App\Core\Domain\Entities\Role;
 use App\Core\Domain\Entities\User;
 use App\Core\Domain\ValueObjects\Email;
 use App\Exceptions\ConflictException;
@@ -44,17 +45,61 @@ class CreateUserUseCaseTest extends TestCase
             name: 'Jane Doe',
             email: new Email('jane@example.com'),
             password: 'hashed',
+            roles: [new Role(2, 'User', 'user', 'Standard user access')],
             createdAt: new DateTimeImmutable('2026-01-01 00:00:00'),
         );
 
         $this->userRepository->method('findByEmail')->willReturn(null);
         $this->userRepository->method('save')->willReturn($savedUser);
+        $this->userRepository->expects($this->once())
+            ->method('assignRole')
+            ->with($savedUser, 'user')
+            ->willReturn($savedUser);
+        $this->userRepository->expects($this->never())->method('createInvitation');
+        $this->userRepository->expects($this->never())->method('sendInvite');
 
         $request = new CreateUserRequest('Jane Doe', 'jane@example.com', 'secret123');
         $response = $this->useCase->execute($request);
 
         $this->assertSame(42, $response->id);
         $this->assertSame('jane@example.com', $response->email);
+        $this->assertSame(['user'], $response->roles);
+        $this->assertSame('not_sent', $response->invitationStatus);
+    }
+
+    public function test_execute_invites_user_with_role_and_without_plain_password(): void
+    {
+        $savedUser = new User(
+            id: 42,
+            name: 'Jane Doe',
+            email: new Email('jane@example.com'),
+            password: 'hashed',
+            roles: [new Role(1, 'Admin', 'admin', 'Full system access')],
+        );
+
+        $this->userRepository->method('findByEmail')->willReturn(null);
+        $this->userRepository->method('save')->willReturn($savedUser);
+        $this->userRepository->expects($this->once())
+            ->method('assignRole')
+            ->with($savedUser, 'admin')
+            ->willReturn($savedUser);
+        $this->userRepository->expects($this->once())
+            ->method('createInvitation')
+            ->with($savedUser, $this->callback(fn (string $token) => strlen($token) === 64));
+        $this->userRepository->expects($this->once())
+            ->method('sendInvite')
+            ->with($savedUser, $this->callback(fn (string $token) => strlen($token) === 64));
+
+        $response = $this->useCase->execute(new CreateUserRequest(
+            name: 'Jane Doe',
+            email: 'jane@example.com',
+            password: null,
+            role: 'admin',
+            sendInvite: true,
+        ));
+
+        $this->assertSame(['admin'], $response->roles);
+        $this->assertSame('sent', $response->invitationStatus);
     }
 
     /**
