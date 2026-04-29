@@ -11,16 +11,16 @@ class ActivityLogPolicy
 {
     public function viewAny(UserModel $user): bool
     {
-        return $this->isAdmin($user);
+        return $this->can($user, 'activity-logs.view-any');
     }
 
     public function view(UserModel $user, ActivityLogModel $activityLog): bool
     {
-        return $this->isAdmin($user);
+        return $this->can($user, 'activity-logs.view');
     }
 
-    private function isAdmin(UserModel $user): bool
+    private function can(UserModel $user, string $permission): bool
     {
-        return $user->hasRole('admin') || $user->hasRole('super_admin');
+        return $user->hasRole('super_admin') || $user->hasPermission($permission);
     }
 }

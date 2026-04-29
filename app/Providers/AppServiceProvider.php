@@ -44,7 +44,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('admin', function ($user) {
-            return $user !== null && ($user->hasRole('admin') || $user->hasRole('super_admin'));
+            return $user !== null && (
+                $user->hasRole('tenant_owner')
+                || $user->hasRole('admin')
+                || $user->hasRole('super_admin')
+            );
         });
 
         Gate::define('super_admin', function ($user) {
