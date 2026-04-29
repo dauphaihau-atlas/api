@@ -14,7 +14,7 @@ use Throwable;
 
 class UserImportChunkProcessor
 {
-    private const ALLOWED_ROLES = ['admin', 'user'];
+    private const ALLOWED_ROLES = ['tenant_owner', 'admin', 'support', 'viewer', 'user'];
 
     public function __construct(
         private readonly UserRepositoryInterface $userRepository,
@@ -116,7 +116,7 @@ class UserImportChunkProcessor
             return ['row' => $rowNumber, 'message' => 'Role is required.'];
         }
         if (! in_array($role, self::ALLOWED_ROLES, true)) {
-            return ['row' => $rowNumber, 'message' => 'Invalid role. Supported roles: admin, user.'];
+            return ['row' => $rowNumber, 'message' => 'Invalid role. Supported roles: tenant_owner, admin, support, viewer, user.'];
         }
 
         return null;
