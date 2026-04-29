@@ -2,6 +2,7 @@
 
 use App\Presentation\Http\Controllers\Api\V1\AuthController;
 use App\Presentation\Http\Controllers\Api\V1\InvitationController;
+use App\Presentation\Http\Controllers\Api\V1\RoleController;
 use App\Presentation\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
 // Authenticated + tenant-scoped (X-Tenant-ID header required)
 Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function (): void {
     require __DIR__.'/v1/me.php';
+    Route::get('roles/assignable', [RoleController::class, 'assignable'])
+        ->middleware('authorize.user:create');
     require __DIR__.'/v1/users.php';
     require __DIR__.'/v1/activity-logs.php';
 });

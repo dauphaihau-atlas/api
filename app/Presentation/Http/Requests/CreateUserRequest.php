@@ -2,6 +2,7 @@
 
 namespace App\Presentation\Http\Requests;
 
+use App\Infrastructure\Persistence\Eloquent\Models\UserModel;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -30,8 +31,21 @@ class CreateUserRequest extends FormRequest
                 if (! $this->boolean('send_invite') && ! $this->filled('password')) {
                     $validator->errors()->add('password', 'The password field is required unless send_invite is true.');
                 }
+
+                $role = (string) $this->input('role', 'user');
+                if (in_array($role, ['admin', 'tenant_owner'], true) && ! $this->canAssignElevatedRole()) {
+                    $validator->errors()->add('role', 'Only tenant owners can assign admin or tenant owner roles.');
+                }
             },
         ];
+    }
+
+    private function canAssignElevatedRole(): bool
+    {
+        $user = $this->user();
+
+        return $user instanceof UserModel
+            && ($user->hasRole('tenant_owner') || $user->hasRole('super_admin'));
     }
 
     public function bodyParameters(): array
